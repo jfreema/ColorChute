@@ -8,11 +8,21 @@ function box(px: Pixels, x: number, y: number, w: number, h: number, c: number[]
 const byLabel = (px: Pixels, dpi = 300) => Object.fromEntries(shirtChecks(px, dpi).map((c) => [c.label, c.status]))
 
 describe('shirt checks', () => {
-  it('passes a good 2700 px design with 2 inks', () => {
+  it('passes a good 2700 px design with 2 Epic inks', () => {
     const px = makePixels(2700, 1000)
-    box(px, 100, 100, 1000, 800, [200, 0, 0, 255])
-    box(px, 1200, 100, 1000, 800, [0, 0, 80, 255])
+    box(px, 100, 100, 1000, 800, [0xaf, 0x00, 0x11, 255]) // Red
+    box(px, 1200, 100, 1000, 800, [0x0a, 0x20, 0x41, 255]) // Navy
     expect(worst(shirtChecks(px, 300))).toBe('pass')
+  })
+
+  it("warns on an ink that isn't on Epic's wheel, naming the closest", () => {
+    const px = makePixels(2700, 1000)
+    box(px, 100, 100, 1000, 800, [0xf4, 0x5b, 0x5b, 255]) // coral
+    box(px, 1200, 100, 1000, 800, [0, 0, 0, 255])
+    const c = shirtChecks(px, 300).find((x) => x.label === 'Epic colors')
+    expect(c?.status).toBe('warn')
+    expect(c?.detail).toContain('#F45B5B')
+    expect(c?.detail).toContain('closest: Red')
   })
 
   it('blocks oversize and undersize art', () => {

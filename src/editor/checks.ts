@@ -1,3 +1,4 @@
+import { EPIC_MATCH, nearestEpicColor } from '../lib/palettes'
 import { EPIC } from '../lib/printSpecs'
 import { ColorCount, dominantColors, Pixels } from './pixels'
 
@@ -82,6 +83,19 @@ export function shirtChecks(px: Pixels, dpi: number): Check[] {
         ? { label: 'Inks', status: 'warn', detail: `${inks.length} colors; the spec is ${EPIC.maxInks} or fewer` }
         : { label: 'Inks', status: 'block', detail: `${inks.length} colors, or a gradient; the spec is ${EPIC.maxInks}` },
   )
+  const off = inks
+    .map((k) => ({ hex: k.hex, near: nearestEpicColor(k.hex) }))
+    .filter((k) => k.near.distance >= EPIC_MATCH)
+  if (inks.length && inks.length <= EPIC.maxInks + 1) {
+    checks.push(
+      off.length
+        ? {
+            label: 'Epic colors', status: 'warn',
+            detail: off.map((k) => `${k.hex} isn't on Epic's wheel (closest: ${k.near.swatch.name})`).join('; '),
+          }
+        : { label: 'Epic colors', status: 'pass', detail: "Every ink is on Epic's color wheel" },
+    )
+  }
   checks.push(
     stats.innerPartial > 0.005
       ? { label: 'See-through areas', status: 'warn', detail: 'Semi-transparent pixels inside the art, not just edges' }

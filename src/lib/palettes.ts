@@ -1,35 +1,55 @@
-/**
- * Swatches for the color panel. Epic Sports' color wheel will replace TEAM_COLORS when it arrives: put its names and
- * hex values here and everything else picks them up.
- */
+import { deltaE } from './color'
+
 export interface Swatch {
   name: string
   hex: string
 }
 
-export const TEAM_COLORS: Swatch[] = [
+/**
+ * Epic Sports' 40-color print wheel: the ink colors designs can use. Names and hex values are read straight off the
+ * wheel Epic sent (Nov 13, 2026), in its order, clockwise from Black.
+ */
+export const EPIC_COLORS: Swatch[] = [
   { name: 'Black', hex: '#000000' },
+  { name: 'Charcoal', hex: '#53565A' },
+  { name: 'Pewter', hex: '#A5A5A5' },
+  { name: 'Silver', hex: '#CCCCCC' },
+  { name: 'Vintage', hex: '#FFFDD0' },
   { name: 'White', hex: '#FFFFFF' },
-  { name: 'Athletic Gray', hex: '#9EA2A2' },
-  { name: 'Charcoal', hex: '#4A4F55' },
-  { name: 'Navy', hex: '#1F2A44' },
-  { name: 'Royal', hex: '#1D4F91' },
-  { name: 'Columbia Blue', hex: '#75B2DD' },
-  { name: 'Teal', hex: '#00808B' },
-  { name: 'Kelly Green', hex: '#00843D' },
-  { name: 'Forest', hex: '#154734' },
-  { name: 'Lime', hex: '#78BE20' },
-  { name: 'Athletic Gold', hex: '#FFB81C' },
-  { name: 'Yellow', hex: '#FEDD00' },
-  { name: 'Vegas Gold', hex: '#C5B783' },
-  { name: 'Orange', hex: '#FF6A13' },
-  { name: 'Texas Orange', hex: '#BF5700' },
-  { name: 'Red', hex: '#C8102E' },
-  { name: 'Cardinal', hex: '#9D2235' },
-  { name: 'Maroon', hex: '#6F263D' },
-  { name: 'Pink', hex: '#F395C7' },
-  { name: 'Purple', hex: '#582C83' },
-  { name: 'Brown', hex: '#5C4033' },
+  { name: 'Red', hex: '#AF0011' },
+  { name: 'Cardinal', hex: '#751327' },
+  { name: 'Maroon', hex: '#582D40' },
+  { name: 'Dusty Rose', hex: '#B66C6D' },
+  { name: 'Neon Pink', hex: '#EC008C' },
+  { name: 'Pink', hex: '#F7AEC3' },
+  { name: 'Pale Pink', hex: '#F0C8D1' },
+  { name: 'Lavender', hex: '#C1A7E2' },
+  { name: 'Electric Purple', hex: '#BB29BB' },
+  { name: 'Purple', hex: '#8031A7' },
+  { name: 'Royal Purple', hex: '#330072' },
+  { name: 'Navy', hex: '#0A2041' },
+  { name: 'Royal Blue', hex: '#0047BB' },
+  { name: 'Slate Blue', hex: '#07487B' },
+  { name: 'Electric Blue', hex: '#00AEEF' },
+  { name: 'Shark Teal', hex: '#02AAA9' },
+  { name: 'Dark Teal', hex: '#006269' },
+  { name: 'Columbia', hex: '#A7C6ED' },
+  { name: 'Mint', hex: '#BDE9C9' },
+  { name: 'Lime', hex: '#A9EE8A' },
+  { name: 'Kelly', hex: '#009A44' },
+  { name: 'Military Green', hex: '#67823A' },
+  { name: 'Forest', hex: '#335525' },
+  { name: 'Dark Green', hex: '#115740' },
+  { name: 'Orange', hex: '#FA4616' },
+  { name: 'Texas Orange', hex: '#9E652E' },
+  { name: 'Creamsicle', hex: '#FFA06A' },
+  { name: 'Butter', hex: '#F8E08E' },
+  { name: 'Maize', hex: '#FFD100' },
+  { name: 'Neon Yellow', hex: '#E0E721' },
+  { name: 'Gold', hex: '#FFA300' },
+  { name: 'Vegas Gold', hex: '#CEB888' },
+  { name: 'Linen', hex: '#E6DABF' },
+  { name: 'Brown', hex: '#623B2A' },
 ]
 
 /** Common blank shirt colors for the preview */
@@ -286,7 +306,21 @@ export const BOARD_COLORS: Swatch[] = [
   { name: 'Military Green', hex: '#4B5320' },
 ]
 
-/** The palette name for a color, if it's one of the team colors */
-export function colorName(hex: string): string | undefined {
-  return TEAM_COLORS.find((s) => s.hex.toUpperCase() === hex.toUpperCase())?.name
+/** The Epic print color closest to this one, and how far off it is (CIE76 ΔE; under about 3 looks the same) */
+export function nearestEpicColor(hex: string): { swatch: Swatch; distance: number } {
+  let best = { swatch: EPIC_COLORS[0], distance: Infinity }
+  for (const swatch of EPIC_COLORS) {
+    const distance = deltaE(hex, swatch.hex)
+    if (distance < best.distance) best = { swatch, distance }
+  }
+  return best
 }
+
+/** Epic's name for an ink that is (or is nearly) one of its print colors */
+export function epicColorName(hex: string): string | undefined {
+  const n = nearestEpicColor(hex)
+  return n.distance < EPIC_MATCH ? n.swatch.name : undefined
+}
+
+/** Closer than this counts as the same print color (antialiasing and rounding move an ink a little) */
+export const EPIC_MATCH = 3

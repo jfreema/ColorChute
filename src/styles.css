@@ -422,6 +422,16 @@ select.field.small { height: 26px; padding: 0 4px; font-size: 12px; max-width: 1
 .ink-row + .ink-row { border-top: 1px solid var(--line); }
 .ink-row .hex { font-weight: 800; font-size: 12px; }
 .ink-row .share { font-size: 11px; color: var(--muted); }
+.link-btn {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  font-weight: 800;
+  color: var(--blue);
+  text-decoration: underline;
+  cursor: pointer;
+}
 .pill {
   display: inline-flex;
   align-items: center;

@@ -1,4 +1,4 @@
-import { colorName } from '../lib/palettes'
+import { epicColorName, nearestEpicColor } from '../lib/palettes'
 import { DEFAULT_DPI, ExportSettings, slug, TARGETS } from '../lib/printSpecs'
 import { setPngDpi } from '../lib/png'
 import {
@@ -91,7 +91,10 @@ export async function buildExport(
   }
 
   const px = readPixels(c)
-  const inks = inkColors(px).map((k) => ({ name: colorName(k.hex), hex: k.hex }))
+  const inks = inkColors(px).map((k) => ({
+    name: epicColorName(k.hex) ?? `Custom color (closest Epic color: ${nearestEpicColor(k.hex).swatch.name})`,
+    hex: k.hex,
+  }))
   const final = withBackground(c, bg)
   const png = await encodePng(final, dpi)
   let checks: Check[]

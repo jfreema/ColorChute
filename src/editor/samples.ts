@@ -6,7 +6,9 @@ import { ColorOption, Design, refreshLibrary, thumbnailOf, toBlob } from './desi
  * Built-in sample designs, added to everyone's library on first run. Each layer ships as a white mask
  * (opaque or clear, no soft edges) and is tinted to its ink for each color option.
  */
-const SEEDED_KEY = 'colorchute.samples.v1'
+const SEEDED_KEY = 'colorchute.samples.v2'
+/** Set by the first version, whose sample used inks that aren't on Epic's wheel */
+const SEEDED_V1_KEY = 'colorchute.samples.v1'
 
 type Ink = 'outline' | 'battle' | 'tank' | 'baseball'
 
@@ -25,25 +27,26 @@ const BATTLE_BASEBALL = {
     { id: 'bb-tank', name: 'Tank', ink: 'tank' },
     { id: 'bb-battle', name: 'BATTLE', ink: 'battle' },
   ] as { id: string; name: string; ink: Ink }[],
+  // Inks are Epic print colors; shirts are blanks Epic sells
   options: [
     {
-      id: 'bb-coral', name: 'Coral & cream', shirt: '#A2A4A3',
-      inks: { outline: '#1A1A18', battle: '#F45B5B', tank: '#F4EAD0', baseball: '#F4EAD0' },
+      id: 'bb-red', name: 'Red & linen', shirt: '#B9B6A7', // Epic cool tee Silver
+      inks: { outline: '#000000', battle: '#AF0011', tank: '#E6DABF', baseball: '#E6DABF' }, // Black, Red, Linen
     },
     {
-      id: 'bb-royal', name: 'Royal blue', shirt: '#0F64C6',
-      inks: { outline: '#1A1A18', battle: '#FFFFFF', tank: '#FFFFFF', baseball: '#F2337F' },
+      id: 'bb-royal', name: 'Royal blue', shirt: '#145DAA', // Epic cool tee Royal
+      inks: { outline: '#000000', battle: '#FFFFFF', tank: '#FFFFFF', baseball: '#EC008C' }, // Black, White, Neon Pink
     },
     {
-      id: 'bb-green', name: 'Military green', shirt: '#4B5320',
-      inks: { outline: '#1A1A18', battle: '#EE7520', tank: '#EFDB9E', baseball: '#EFDB9E' },
+      id: 'bb-green', name: 'Military green', shirt: '#3E3F1F', // A4 Military Green
+      inks: { outline: '#000000', battle: '#FA4616', tank: '#F8E08E', baseball: '#F8E08E' }, // Black, Orange, Butter
     },
   ] as { id: string; name: string; shirt: string; inks: Record<Ink, string> }[],
 }
 
-function seeded() {
+function seeded(key = SEEDED_KEY) {
   try {
-    return localStorage.getItem(SEEDED_KEY) === '1'
+    return localStorage.getItem(key) === '1'
   } catch {
     return false
   }
@@ -98,10 +101,16 @@ async function buildBattleBaseball(): Promise<Design> {
   return { id: s.id, name: s.name, createdAt: now, updatedAt: now, options }
 }
 
-/** Adds the sample designs once. If someone deletes one later, it stays deleted. */
+/**
+ * Adds the sample designs once. If someone deletes one later, it stays deleted. A sample nobody has saved over is
+ * replaced by the current version, so it picks up fixes like Epic's print colors.
+ */
 export async function seedSamples() {
   if (seeded()) return
-  if (!(await idb.get<Design>(BATTLE_BASEBALL.id))) await idb.put(await buildBattleBaseball())
+  const existing = await idb.get<Design>(BATTLE_BASEBALL.id)
+  const untouched = existing && existing.updatedAt === existing.createdAt
+  const deleted = !existing && seeded(SEEDED_V1_KEY)
+  if (!deleted && (!existing || untouched)) await idb.put(await buildBattleBaseball())
   markSeeded()
   await refreshLibrary()
 }

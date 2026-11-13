@@ -4,7 +4,9 @@ import { ctx2d, makeCanvas, readPixels } from '../editor/doc'
 import { ColorCount } from '../editor/pixels'
 import { editor, useEditor } from '../editor/store'
 import { isHex, normalizeHex } from '../lib/color'
-import { BOARD_COLORS, colorName, SHIRT_COLLECTIONS, shirtCollection, shirtColorName, TEAM_COLORS } from '../lib/palettes'
+import {
+  BOARD_COLORS, EPIC_COLORS, EPIC_MATCH, epicColorName, nearestEpicColor, SHIRT_COLLECTIONS, shirtCollection, shirtColorName,
+} from '../lib/palettes'
 import { EPIC } from '../lib/printSpecs'
 import { ColorInput } from './ColorInput'
 import { ArrowDown, ArrowUp, Copy, Eye, EyeOff, ImagePlus, Merge, Plus, Trash2 } from './icons'
@@ -34,7 +36,7 @@ function ColorsPanel() {
         <div className="card-row row">
           <ColorInput className="swatch big-swatch" value={primary} onChange={(c) => editor.setPrimary(c)} title="Pick any color" />
           <div className="grow">
-            <div style={{ fontWeight: 900, fontSize: 15 }}>{colorName(primary) ?? 'Custom'}</div>
+            <div style={{ fontWeight: 900, fontSize: 15 }}>{epicColorName(primary) ?? 'Custom, not an Epic color'}</div>
             <input
               className="field"
               style={{ width: 100, marginTop: 4 }}
@@ -50,13 +52,11 @@ function ColorsPanel() {
         </div>
         <div className="card-row">
           <div className="row" style={{ marginBottom: 8 }}>
-            <b>Team colors</b>
-            <span className="hint" title="Epic Sports' 40-color wheel goes in src/lib/palettes.ts when it arrives">
-              Epic wheel coming
-            </span>
+            <b>Epic colors</b>
+            <span className="hint">The 40 colors Epic prints</span>
           </div>
           <div className="swatch-grid">
-            {TEAM_COLORS.map((c) => (
+            {EPIC_COLORS.map((c) => (
               <button key={c.hex} className={`swatch ${c.hex === primary ? 'selected' : ''}`} style={{ background: c.hex }}
                 title={`${c.name} ${c.hex}`} aria-label={c.name} onClick={() => editor.setPrimary(c.hex)} />
             ))}
@@ -115,8 +115,23 @@ function InksPanel() {
             <button className={`swatch ${ink.hex === primary ? 'selected' : ''}`} style={{ background: ink.hex }}
               title="Use this color" aria-label={`Use ${ink.hex}`} onClick={() => editor.setPrimary(ink.hex)} />
             <div className="grow">
-              <div className="hex">{colorName(ink.hex) ?? ink.hex}</div>
-              <div className="share">{Math.round(ink.share * 100)}% of the art</div>
+              <div className="hex">{epicColorName(ink.hex) ?? ink.hex}</div>
+              <div className="share">
+                {Math.round(ink.share * 100)}% of the art
+                {(() => {
+                  const near = nearestEpicColor(ink.hex)
+                  if (near.distance < EPIC_MATCH) return null
+                  return (
+                    <>
+                      {' · '}
+                      <button className="link-btn" title={`Not one of Epic's colors. Change it to ${near.swatch.name} on every layer.`}
+                        onClick={() => editor.replaceEverywhere(ink.hex, near.swatch.hex)}>
+                        Use {near.swatch.name}
+                      </button>
+                    </>
+                  )
+                })()}
+              </div>
             </div>
             <button
               className="btn small"
