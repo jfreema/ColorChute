@@ -94,8 +94,8 @@ export class Editor {
       width: w, height: h, dpi: DEFAULT_DPI, layers: [layer], activeId: layer.id, selection: null,
       tool: 'bucket',
       options: { tolerance: 15, contiguous: true, sampleAll: false, brushSize: 24, growBy: 4, ...saved.options },
-      primary: saved.primary ?? '#C8102E',
-      secondary: saved.secondary ?? '#1F2A44',
+      primary: saved.primary ?? '#AF0011',
+      secondary: saved.secondary ?? '#0A2041',
       recent: saved.recent ?? [],
       preview: {
         mode: 'square', boardColor: '#FFFFFF', shirtColor: '#F7F7F5', stageColor: '#DCE6FF', sizeMode: 'actual',
