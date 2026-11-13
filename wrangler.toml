@@ -1,0 +1,4 @@
+# Cloudflare Pages (free plan). The site is the static build in dist/; nothing runs on a server.
+name = "colorchute"
+pages_build_output_dir = "dist"
+compatibility_date = "2026-11-01"
