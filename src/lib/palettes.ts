@@ -66,6 +66,28 @@ export interface ShirtCollection {
  * Hex values were read from each color's product photo (Nov 2026), so they are close to the real fabric but not exact.
  * Heathers show as their average color.
  */
+const EPIC_COOL: Swatch[] = [
+  { name: 'White', hex: '#F4F4F4' },
+  { name: 'Black', hex: '#262626' },
+  { name: 'Silver', hex: '#B9B6A7' },
+  { name: 'Charcoal', hex: '#636363' },
+  { name: 'Scarlet', hex: '#CF092A' },
+  { name: 'Maroon', hex: '#6B2549' },
+  { name: 'Cardinal', hex: '#9E2A3D' },
+  { name: 'Orange', hex: '#F35901' },
+  { name: 'Safety Orange', hex: '#F87D06' },
+  { name: 'Safety Yellow', hex: '#DEEF00' },
+  { name: 'Gold', hex: '#E7931F' },
+  { name: 'Vegas Gold', hex: '#AA9151' },
+  { name: 'Lime', hex: '#9EEF0A' },
+  { name: 'Kelly', hex: '#208B3D' },
+  { name: 'Forest', hex: '#046132' },
+  { name: 'Light Blue', hex: '#5489BF' },
+  { name: 'Royal', hex: '#145DAA' },
+  { name: 'Navy', hex: '#2D455F' },
+  { name: 'Purple', hex: '#4B34A9' },
+]
+
 const A4_N3142: Swatch[] = [
   { name: 'White', hex: '#F1F2F4' },
   { name: 'Silver', hex: '#B1B2AD' },
@@ -99,6 +121,7 @@ const A4_N3142: Swatch[] = [
   { name: 'Sand', hex: '#C6BFA5' },
   { name: 'Melon', hex: '#ECD0A0' },
   { name: 'Texas Orange', hex: '#79301C' },
+  { name: 'Burnt Orange', hex: '#7B301D' },
   { name: 'Salmon', hex: '#FBC3AF' },
   { name: 'Light Lime', hex: '#BCE1B2' },
   { name: 'Safety Green', hex: '#7BDA5C' },
@@ -228,7 +251,10 @@ const GILDAN_5000: Swatch[] = [
 ]
 
 export const SHIRT_COLLECTIONS: ShirtCollection[] = [
-  { id: 'a4', name: 'A4 moisture wicking', shirt: 'A4 N3142 Cooling Performance Tee', colors: A4_N3142 },
+  { id: 'epic', name: 'Epic Sports cool tee', shirt: 'Epic Cool Performance Dry-Fit Crew Tee, adult and youth, from Epic Sports',
+    colors: EPIC_COOL },
+  { id: 'a4', name: 'A4 moisture wicking', shirt: 'A4 N3142 Cooling Performance Tee, also sold by Epic Sports',
+    colors: A4_N3142 },
   { id: 'sporttek', name: 'Sport-Tek (Ninja)', shirt: 'Sport-Tek ST350 PosiCharge Competitor Tee, from Ninja Transfers',
     colors: SPORTTEK_ST350 },
   { id: 'gildan', name: 'Gildan heavy tee', shirt: 'Gildan 5000 Heavy Cotton Tee', colors: GILDAN_5000 },
