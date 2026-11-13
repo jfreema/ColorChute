@@ -26,6 +26,8 @@ export interface PreviewSettings {
   /** The square's color, or 'transparent' for a checkerboard */
   boardColor: string
   shirtColor: string
+  /** Which blank's color list the shirt swatches show */
+  shirtCollection?: string
   /** Behind everything */
   stageColor: string
   /** 'fit' fills the chest print area; 'actual' sizes the print from the document's DPI */

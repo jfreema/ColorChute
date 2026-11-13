@@ -4,7 +4,7 @@ import { ctx2d, makeCanvas, readPixels } from '../editor/doc'
 import { ColorCount } from '../editor/pixels'
 import { editor, useEditor } from '../editor/store'
 import { isHex, normalizeHex } from '../lib/color'
-import { BOARD_COLORS, colorName, SHIRT_COLORS, TEAM_COLORS } from '../lib/palettes'
+import { BOARD_COLORS, colorName, SHIRT_COLLECTIONS, shirtCollection, shirtColorName, TEAM_COLORS } from '../lib/palettes'
 import { EPIC } from '../lib/printSpecs'
 import { ColorInput } from './ColorInput'
 import { ArrowDown, ArrowUp, Copy, Eye, EyeOff, ImagePlus, Merge, Plus, Trash2 } from './icons'
@@ -254,6 +254,8 @@ function LayersPanel({ onPlaceImage }: { onPlaceImage: () => void }) {
 
 function PreviewPanel() {
   const p = useEditor((s) => s.preview)
+  const collection = shirtCollection(p.shirtCollection)
+  const shirtName = shirtColorName(p.shirtColor, collection.id)
   const custom = (value: string, on: (hex: string) => void, title: string) => (
     <ColorInput className="swatch" value={value} onChange={(c) => on(normalizeHex(c))} title={title} />
   )
@@ -281,14 +283,25 @@ function PreviewPanel() {
         ) : (
           <>
             <div className="card-row">
-              <div style={{ marginBottom: 6 }}><b>Shirt color</b></div>
-              <div className="swatch-grid">
-                {SHIRT_COLORS.map((c) => (
-                  <button key={c.hex} className={`swatch ${p.shirtColor === c.hex ? 'selected' : ''}`}
-                    style={{ background: c.hex }} title={`${c.name} shirt`} aria-label={`${c.name} shirt`}
+              <div className="row tight" style={{ marginBottom: 6 }}>
+                <b className="grow">Shirt color</b>
+                <select className="field small" value={collection.id} title={collection.shirt} aria-label="Shirt colors from"
+                  onChange={(e) => editor.setPreview({ shirtCollection: e.target.value })}>
+                  {SHIRT_COLLECTIONS.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              </div>
+              <div className="swatch-grid shirts">
+                {collection.colors.map((c) => (
+                  <button key={c.name} className={`swatch ${p.shirtColor.toUpperCase() === c.hex.toUpperCase() ? 'selected' : ''}`}
+                    style={{ background: c.hex }} title={c.name} aria-label={`${c.name} shirt`}
                     onClick={() => editor.setPreview({ shirtColor: c.hex })} />
                 ))}
                 {custom(p.shirtColor, (c) => editor.setPreview({ shirtColor: c }), 'Any shirt color')}
+              </div>
+              <div className="hint shirt-name">
+                {shirtName
+                  ? `${shirtName.name}${shirtName.collection !== collection ? ` (${shirtName.collection.name})` : ''}`
+                  : `Custom ${p.shirtColor.toUpperCase()}`}
               </div>
             </div>
             <div className="card-row row">
