@@ -1,11 +1,58 @@
 import { useEffect, useState } from 'react'
-import { deleteDesign, duplicateDesign, openDesign, refreshLibrary, renameDesign, useDesigns } from '../editor/designs'
+import { showPrompt, signIn, useAccount } from '../editor/account'
+import { copyLocalDesigns, deleteDesign, duplicateDesign, openDesign, refreshLibrary, renameDesign, useDesigns } from '../editor/designs'
 import { Dialog } from './Dialog'
-import { Copy, Library, Pencil, Trash2 } from './icons'
+import { CloudUpload, Copy, Library, LogIn, Pencil, Trash2 } from './icons'
+
+/** What the library is and who can change it, above the designs */
+function LibraryNote() {
+  const source = useDesigns((s) => s.source)
+  const localOnly = useDesigns((s) => s.localOnly.length)
+  const busy = useDesigns((s) => s.busy)
+  const user = useAccount((s) => s.user)
+  const configured = useAccount((s) => s.configured)
+  if (source === 'cloud') {
+    return (
+      <>
+        <p className="dialog-text">Saved to your account, so they're here on any computer you sign in on.</p>
+        {localOnly > 0 && (
+          <div className="card card-row tinted row" style={{ margin: '0 4px 10px', gap: 10 }}>
+            <CloudUpload size={18} />
+            <span className="grow">
+              {localOnly === 1 ? '1 design is' : `${localOnly} designs are`} saved only in this browser, from before sign-in.
+            </span>
+            <button className="btn small green" disabled={busy} onClick={() => copyLocalDesigns()}>Copy to my account</button>
+          </div>
+        )}
+      </>
+    )
+  }
+  if (user) {
+    return (
+      <div className="card card-row tinted row" style={{ margin: '6px 4px 10px', gap: 10 }}>
+        <span className="grow">
+          {user.status === 'pending'
+            ? 'Your account is waiting for approval. You can open these and play with them, but saving starts once the admin approves you.'
+            : "Your account doesn't have access to save. You can open these and play with them."}
+        </span>
+        <button className="btn small" onClick={() => showPrompt(user.status === 'pending' ? 'pending' : 'denied')}>Details</button>
+      </div>
+    )
+  }
+  return (
+    <div className="card card-row tinted row" style={{ margin: '6px 4px 10px', gap: 10 }}>
+      <span className="grow">
+        Open any of these and play with it. To save designs, sign in{configured ? '' : ' (not set up on this site yet)'}.
+      </span>
+      {configured && <button className="btn small green" onClick={signIn}><LogIn size={14} /> Sign in with Google</button>}
+    </div>
+  )
+}
 
 export function LibraryDialog({ onClose, confirmDiscard }: { onClose: () => void; confirmDiscard: (then: () => void) => void }) {
   const library = useDesigns((s) => s.library)
   const current = useDesigns((s) => s.designId)
+  const editable = useDesigns((s) => s.source === 'cloud')
   const [loaded, setLoaded] = useState(false)
   const [renaming, setRenaming] = useState<string | null>(null)
   const [deleting, setDeleting] = useState<string | null>(null)
@@ -14,9 +61,7 @@ export function LibraryDialog({ onClose, confirmDiscard }: { onClose: () => void
   }, [])
   return (
     <Dialog title="Saved designs" icon={<Library size={14} />} chip="var(--green)" wide onClose={onClose}>
-      <p style={{ color: '#fff', margin: '6px 2px 10px', opacity: 0.9 }}>
-        Saved in this browser on this computer. To move a design to another computer, use More, then Download project file, and open it there.
-      </p>
+      <LibraryNote />
       {loaded && !library.length && <div className="empty">No saved designs yet. Press Save and your design shows up here.</div>}
       <div className="library-grid">
         {library.map((d) => (
@@ -57,7 +102,7 @@ export function LibraryDialog({ onClose, confirmDiscard }: { onClose: () => void
               <div className="hint">
                 {d.optionCount} color option{d.optionCount === 1 ? '' : 's'} · {new Date(d.updatedAt).toLocaleDateString()}
               </div>
-              <div className="acts" onClick={(e) => e.stopPropagation()}>
+              {editable && <div className="acts" onClick={(e) => e.stopPropagation()}>
                 <button className="icon-btn" title="Rename" aria-label={`Rename ${d.name}`}
                   onClick={() => setRenaming(d.id)}><Pencil size={15} /></button>
                 <button className="icon-btn" title="Duplicate" aria-label={`Duplicate ${d.name}`}
@@ -72,7 +117,7 @@ export function LibraryDialog({ onClose, confirmDiscard }: { onClose: () => void
                   <button className="icon-btn" title="Delete" aria-label={`Delete ${d.name}`}
                     onClick={() => setDeleting(d.id)}><Trash2 size={15} /></button>
                 )}
-              </div>
+              </div>}
             </div>
           </div>
         ))}

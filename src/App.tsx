@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { AccountDialog } from './components/AccountDialog'
+import { AdminDialog } from './components/AdminDialog'
 import { ExportDialog } from './components/ExportDialog'
 import { Header } from './components/Header'
 import { LibraryDialog } from './components/LibraryDialog'
@@ -10,9 +12,11 @@ import { Sidebar } from './components/Sidebar'
 import { Stage } from './components/Stage'
 import { Toolbar, TOOLS } from './components/Toolbar'
 import { Dialog } from './components/Dialog'
-import { Save } from './components/icons'
+import { LogIn, Save } from './components/icons'
+import { canSave, loadAccount, onAccountChange, useAccount } from './editor/account'
 import { readPixels } from './editor/doc'
 import { detachDesign, getDesigns, refreshLibrary, save, saveAsNewOption } from './editor/designs'
+import { clearCloudCache } from './editor/storage'
 import { seedSamples } from './editor/samples'
 import { download } from './editor/exporting'
 import { contentBounds } from './editor/pixels'
@@ -20,7 +24,7 @@ import { editor, ProjectFile, useEditor } from './editor/store'
 import { slug } from './lib/printSpecs'
 import { readPngDpi } from './lib/png'
 
-type Modal = 'new' | 'resize' | 'export' | 'library' | null
+type Modal = 'new' | 'resize' | 'export' | 'library' | 'admin' | null
 
 function isTyping(e: KeyboardEvent) {
   const t = e.target as HTMLElement
@@ -61,6 +65,8 @@ export function App() {
     })
   }, [])
   const placeInput = useRef<HTMLInputElement>(null)
+  // Re-renders the unsaved-changes question when sign-in changes what Save can do
+  useAccount((s) => s.user?.status)
 
   useEffect(() => {
     if (!toast) return
@@ -70,7 +76,16 @@ export function App() {
   }, [toast])
 
   useEffect(() => {
-    refreshLibrary().then(seedSamples).catch(() => {})
+    const load = () => refreshLibrary().then(seedSamples).catch(() => {})
+    loadAccount().then(load)
+    const stop = onAccountChange(() => {
+      if (!canSave()) {
+        // Signed out: forget the account's designs, and don't save into one from here
+        clearCloudCache()
+        if (getDesigns().source === 'cloud') detachDesign()
+      }
+      load()
+    })
     const warn = (e: BeforeUnloadEvent) => {
       if (editor.state.dirty) {
         e.preventDefault()
@@ -78,7 +93,10 @@ export function App() {
       }
     }
     window.addEventListener('beforeunload', warn)
-    return () => window.removeEventListener('beforeunload', warn)
+    return () => {
+      stop()
+      window.removeEventListener('beforeunload', warn)
+    }
   }, [])
 
   /** Runs `then` now, or after asking about unsaved changes */
@@ -130,6 +148,7 @@ export function App() {
     placeImage: () => placeInput.current?.click(),
     exportFile: () => setModal('export'),
     resize: () => setModal('resize'),
+    admin: () => setModal('admin'),
   }
 
   // Paste an image to add it as a layer
@@ -235,6 +254,8 @@ export function App() {
       {modal === 'resize' && <ResizeDialog onClose={close} />}
       {modal === 'export' && <ExportDialog onClose={close} />}
       {modal === 'library' && <LibraryDialog onClose={close} confirmDiscard={confirmDiscard} />}
+      {modal === 'admin' && <AdminDialog onClose={close} />}
+      <AccountDialog />
       {pending && (
         <Dialog
           title="Save changes first?"
@@ -249,19 +270,27 @@ export function App() {
               }}>Don't save</button>
               <span className="grow" />
               <button className="btn" onClick={() => setPending(null)}>Cancel</button>
-              <button className="btn yellow" onClick={async () => {
-                const next = pending
-                setPending(null)
-                await save()
-                next()
-              }}>Save</button>
+              {canSave() ? (
+                <button className="btn yellow" onClick={async () => {
+                  const next = pending
+                  setPending(null)
+                  if (await save()) next()
+                }}>Save</button>
+              ) : (
+                <button className="btn green" onClick={() => {
+                  setPending(null)
+                  save()
+                }}><LogIn size={15} /> Sign in to save</button>
+              )}
             </>
           }
         >
-          <p style={{ color: '#fff', fontWeight: 700 }}>
-            {getDesigns().designId
-              ? 'This color option has changes that aren’t saved.'
-              : 'This design isn’t saved yet. Save it to your designs?'}
+          <p className="dialog-text">
+            {!canSave()
+              ? 'These changes aren’t saved. Saving needs an approved account, or you can carry on without saving.'
+              : getDesigns().designId
+                ? 'This color option has changes that aren’t saved.'
+                : 'This design isn’t saved yet. Save it to your designs?'}
           </p>
         </Dialog>
       )}

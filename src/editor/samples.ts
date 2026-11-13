@@ -1,6 +1,9 @@
+import { api } from '../lib/api'
 import { idb } from '../lib/idb'
+import { getAccount, markSamplesSeeded } from './account'
 import { ctx2d, makeCanvas } from './doc'
 import { ColorOption, Design, refreshLibrary, thumbnailOf, toBlob } from './designs'
+import { cloudStore } from './storage'
 
 /**
  * Built-in sample designs, added to everyone's library on first run. Each layer ships as a white mask
@@ -101,16 +104,36 @@ async function buildBattleBaseball(): Promise<Design> {
   return { id: s.id, name: s.name, createdAt: now, updatedAt: now, options }
 }
 
+const untouched = (d: Design | undefined): d is Design => !!d && d.updatedAt === d.createdAt
+
 /**
- * Adds the sample designs once. If someone deletes one later, it stays deleted. A sample nobody has saved over is
- * replaced by the current version, so it picks up fixes like Epic's print colors.
+ * Adds the sample designs once to this browser, and once to each approved account. If someone deletes one later,
+ * it stays deleted. A sample nobody has saved over in this browser is replaced by the current version, so it picks
+ * up fixes like Epic's print colors.
  */
-export async function seedSamples() {
-  if (seeded()) return
-  const existing = await idb.get<Design>(BATTLE_BASEBALL.id)
-  const untouched = existing && existing.updatedAt === existing.createdAt
-  const deleted = !existing && seeded(SEEDED_V1_KEY)
-  if (!deleted && (!existing || untouched)) await idb.put(await buildBattleBaseball())
-  markSeeded()
-  await refreshLibrary()
+export function seedSamples() {
+  seeding ??= seedAll().finally(() => (seeding = null))
+  return seeding
+}
+
+let seeding: Promise<void> | null = null
+
+async function seedAll() {
+  if (!seeded()) {
+    const existing = await idb.get<Design>(BATTLE_BASEBALL.id)
+    const deleted = !existing && seeded(SEEDED_V1_KEY)
+    if (!deleted && (!existing || untouched(existing))) await idb.put(await buildBattleBaseball())
+    markSeeded()
+    await refreshLibrary()
+  }
+  const u = getAccount().user
+  if (u?.status === 'approved' && !u.samplesSeeded) {
+    if (!(await cloudStore.list()).some((d) => d.id === BATTLE_BASEBALL.id)) {
+      const local = await idb.get<Design>(BATTLE_BASEBALL.id)
+      await cloudStore.put(untouched(local) ? local : await buildBattleBaseball())
+    }
+    await api('/api/me/samples-seeded', { method: 'POST' })
+    markSamplesSeeded()
+    await refreshLibrary()
+  }
 }

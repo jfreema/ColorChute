@@ -1,8 +1,9 @@
 import { useSyncExternalStore } from 'react'
-import { idb, persistStorage } from '../lib/idb'
+import { canSave, requireSave } from './account'
 import { ctx2d, Layer, makeCanvas, newId } from './doc'
 import { readPixels } from './doc'
 import { dominantColors } from './pixels'
+import { cloudStore, DesignStore, DesignSummary, localStore, urlFor } from './storage'
 import { editor } from './store'
 
 /** One saved color scheme of a design: all its layers as they were */
@@ -36,26 +37,29 @@ export interface DesignsState {
   optionId: string | null
   designName: string
   options: { id: string; name: string; swatches: string[]; thumb: string; shirt?: string }[]
-  library: {
-    id: string; name: string; updatedAt: number; optionCount: number; thumb: string; swatches: string[]; shirt?: string
-  }[]
+  library: DesignSummary[]
+  /** Where the library came from: this browser, or the signed-in account */
+  source: 'local' | 'cloud'
+  /** Designs saved in this browser that aren't in the account yet, offered to copy in */
+  localOnly: string[]
   busy: boolean
 }
 
-let state: DesignsState = { designId: null, optionId: null, designName: '', options: [], library: [], busy: false }
+let state: DesignsState = {
+  designId: null, optionId: null, designName: '', options: [], library: [], source: 'local', localOnly: [], busy: false,
+}
 const listeners = new Set<() => void>()
-const thumbUrls = new Map<Blob, string>()
 
 function set(patch: Partial<DesignsState>) {
   state = { ...state, ...patch }
   for (const fn of listeners) fn()
 }
 
-function urlFor(b: Blob) {
-  let u = thumbUrls.get(b)
-  if (!u) thumbUrls.set(b, (u = URL.createObjectURL(b)))
-  return u
-}
+/** Approved accounts save to the server; everyone else sees this browser's designs, read only */
+const activeStore = (): DesignStore => (canSave() ? cloudStore : localStore)
+
+/** Built-in samples, which every account gets its own copy of instead of copying them in */
+export const SAMPLE_IDS = new Set(['sample-battle-baseball'])
 
 export function useDesigns<T>(select: (s: DesignsState) => T): T {
   return useSyncExternalStore(
@@ -124,8 +128,11 @@ function summarize(d: Design) {
   })
 }
 
+/** The open design. One opened from this browser before signing in is saved into the account from here on. */
 async function current(): Promise<Design | undefined> {
-  return state.designId ? idb.get<Design>(state.designId) : undefined
+  if (!state.designId) return undefined
+  const store = activeStore()
+  return (await store.get(state.designId)) ?? (store === cloudStore ? localStore.get(state.designId) : undefined)
 }
 
 async function busy<T>(fn: () => Promise<T>): Promise<T | undefined> {
@@ -141,23 +148,24 @@ async function busy<T>(fn: () => Promise<T>): Promise<T | undefined> {
 }
 
 export async function refreshLibrary() {
-  const all = await idb.all<Design>()
-  all.sort((a, b) => b.updatedAt - a.updatedAt)
-  set({
-    library: all.map((d) => {
-      const o = d.options[0]
-      return {
-        id: d.id, name: d.name, updatedAt: d.updatedAt, optionCount: d.options.length,
-        thumb: o ? urlFor(o.thumbnail) : '', swatches: o?.swatches ?? [], shirt: o?.shirtColor,
-      }
-    }),
-  })
+  const store = activeStore()
+  try {
+    const library = await store.list()
+    let localOnly: string[] = []
+    if (store === cloudStore) {
+      const inAccount = new Set(library.map((d) => d.id))
+      localOnly = (await localStore.list()).map((d) => d.id).filter((id) => !inAccount.has(id) && !SAMPLE_IDS.has(id))
+    }
+    set({ library, localOnly, source: store.kind })
+  } catch (e) {
+    editor.toast(e instanceof Error ? e.message : "Couldn't load your designs")
+  }
 }
 
 /** Saves into the open color option, making the design (and a first option) if this is its first save */
-export function save(designName?: string) {
-  return busy(async () => {
-    persistStorage()
+export async function save(designName?: string): Promise<boolean> {
+  if (!requireSave(() => save(designName))) return false
+  const ok = await busy(async () => {
     let d = await current()
     if (!d) {
       const now = Date.now()
@@ -170,19 +178,21 @@ export function save(designName?: string) {
     const option = await snapshotOption(id && existing ? id : newId(), existing?.name ?? `Option ${d.options.length + 1}`)
     d.options = existing ? d.options.map((o) => (o.id === option.id ? option : o)) : [...d.options, option]
     d.updatedAt = Date.now()
-    await idb.put(d)
+    await cloudStore.put(d)
     set({ optionId: option.id })
     summarize(d)
     editor.markSaved(d.name)
     editor.toast(`Saved ${option.name}`)
     refreshLibrary()
+    return true
   })
+  return ok ?? false
 }
 
 /** Saves the current colors as another option of the open design */
 export function saveAsNewOption(name?: string) {
+  if (!requireSave(() => saveAsNewOption(name))) return
   return busy(async () => {
-    persistStorage()
     let d = await current()
     if (!d) {
       const now = Date.now()
@@ -191,7 +201,7 @@ export function saveAsNewOption(name?: string) {
     const option = await snapshotOption(newId(), name || `Option ${d.options.length + 1}`)
     d.options = [...d.options, option]
     d.updatedAt = Date.now()
-    await idb.put(d)
+    await cloudStore.put(d)
     set({ optionId: option.id })
     summarize(d)
     editor.markSaved(d.name)
@@ -213,7 +223,7 @@ export function openOption(optionId: string) {
 
 export function openDesign(designId: string) {
   return busy(async () => {
-    const d = await idb.get<Design>(designId)
+    const d = await activeStore().get(designId)
     if (!d || !d.options.length) return
     await loadOption(d.options[0])
     set({ optionId: d.options[0].id })
@@ -223,23 +233,25 @@ export function openDesign(designId: string) {
 }
 
 export function renameOption(optionId: string, name: string) {
+  if (!requireSave(() => renameOption(optionId, name))) return
   return busy(async () => {
     const d = await current()
     if (!d) return
     d.options = d.options.map((o) => (o.id === optionId ? { ...o, name } : o))
-    await idb.put(d)
+    await cloudStore.put(d)
     summarize(d)
   })
 }
 
 export function deleteOption(optionId: string) {
+  if (!requireSave(() => deleteOption(optionId))) return
   return busy(async () => {
     const d = await current()
     if (!d) return
     if (d.options.length <= 1) return editor.toast('A design keeps at least one option. Delete the design instead.')
     d.options = d.options.filter((o) => o.id !== optionId)
     d.updatedAt = Date.now()
-    await idb.put(d)
+    await cloudStore.put(d)
     if (state.optionId === optionId) set({ optionId: null })
     summarize(d)
     refreshLibrary()
@@ -247,11 +259,12 @@ export function deleteOption(optionId: string) {
 }
 
 export function renameDesign(designId: string, name: string) {
+  if (!requireSave(() => renameDesign(designId, name))) return
   return busy(async () => {
-    const d = await idb.get<Design>(designId)
+    const d = await cloudStore.get(designId)
     if (!d) return
     d.name = name
-    await idb.put(d)
+    await cloudStore.put(d)
     if (state.designId === designId) {
       summarize(d)
       editor.markSaved(name)
@@ -261,20 +274,40 @@ export function renameDesign(designId: string, name: string) {
 }
 
 export function duplicateDesign(designId: string) {
+  if (!requireSave(() => duplicateDesign(designId))) return
   return busy(async () => {
-    const d = await idb.get<Design>(designId)
+    const d = await cloudStore.get(designId)
     if (!d) return
     const now = Date.now()
-    await idb.put({ ...d, id: newId(), name: `${d.name} copy`, createdAt: now, updatedAt: now })
+    await cloudStore.put({ ...d, id: newId(), name: `${d.name} copy`, createdAt: now, updatedAt: now })
     refreshLibrary()
   })
 }
 
 export function deleteDesign(designId: string) {
+  if (!requireSave(() => deleteDesign(designId))) return
   return busy(async () => {
-    await idb.delete(designId)
+    await cloudStore.delete(designId)
     if (state.designId === designId) set({ designId: null, optionId: null, options: [], designName: '' })
     refreshLibrary()
+  })
+}
+
+/** Copies the designs saved in this browser before sign-in into the account. Returns how many were copied. */
+export function copyLocalDesigns() {
+  if (!requireSave(() => copyLocalDesigns())) return
+  return busy(async () => {
+    const ids = state.localOnly
+    let n = 0
+    for (const id of ids) {
+      const d = await localStore.get(id)
+      if (!d || !d.options.length) continue
+      editor.toast(`Copying ${d.name} (${++n} of ${ids.length})`)
+      await cloudStore.put(d)
+    }
+    await refreshLibrary()
+    editor.toast(n === 1 ? 'Copied 1 design to your account' : `Copied ${n} designs to your account`)
+    return n
   })
 }
 

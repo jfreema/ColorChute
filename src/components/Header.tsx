@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
+import { signIn, signOut, showPrompt, useAccount } from '../editor/account'
 import { useDesigns } from '../editor/designs'
 import { editor, useEditor } from '../editor/store'
-import { ChevronDown, Download, FilePlus, FolderOpen, Library, Redo2, Save, Scaling, Undo2 } from './icons'
+import { Avatar } from './Avatar'
+import { ChevronDown, Download, FilePlus, FolderOpen, Library, LogIn, LogOut, Redo2, Save, Scaling, ShieldCheck, Undo2 } from './icons'
 import { Logo } from './Logo'
 
 export interface HeaderActions {
@@ -14,17 +16,78 @@ export interface HeaderActions {
   placeImage: () => void
   exportFile: () => void
   resize: () => void
+  admin: () => void
+}
+
+/** Closes a pop-up menu when you click anywhere outside it */
+function useOutsideClose(open: boolean, close: () => void) {
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!open) return
+    const onDown = (e: PointerEvent) => !ref.current?.contains(e.target as Node) && close()
+    window.addEventListener('pointerdown', onDown)
+    return () => window.removeEventListener('pointerdown', onDown)
+  }, [open, close])
+  return ref
+}
+
+const STATUS = {
+  approved: 'Can save designs',
+  pending: 'Waiting for approval',
+  denied: 'No access to save',
+}
+
+/** Sign in, or the signed-in account with its menu */
+function Account({ onAdmin }: { onAdmin: () => void }) {
+  const loaded = useAccount((s) => s.loaded)
+  const configured = useAccount((s) => s.configured)
+  const user = useAccount((s) => s.user)
+  const pending = useAccount((s) => s.pending)
+  const [open, setOpen] = useState(false)
+  const ref = useOutsideClose(open, () => setOpen(false))
+  if (!loaded || (!user && !configured)) return null
+  if (!user) {
+    return (
+      <button className="btn green" onClick={signIn} title="Sign in with Google to save designs">
+        <LogIn size={15} /> Sign in
+      </button>
+    )
+  }
+  const items = [
+    ...(user.admin ? [{ label: 'Admin', hint: pending ? `${pending} waiting` : undefined, icon: <ShieldCheck size={15} />, onClick: onAdmin }] : []),
+    ...(user.status !== 'approved' ? [{ label: 'Why can’t I save?', icon: undefined, hint: undefined, onClick: () => showPrompt(user.status === 'pending' ? 'pending' : 'denied') }] : []),
+    { label: 'Sign out', icon: <LogOut size={15} />, hint: undefined, onClick: () => signOut() },
+  ]
+  return (
+    <div ref={ref} style={{ position: 'relative' }}>
+      <button className={`btn account-btn ${open ? 'pressed' : ''}`} onClick={() => setOpen(!open)}
+        aria-haspopup="menu" aria-expanded={open} aria-label={`Account: ${user.email}`} title={user.email}>
+        <Avatar user={user} size={22} />
+        {user.admin && pending > 0 && <span className="badge">{pending}</span>}
+      </button>
+      {open && (
+        <div className="card" role="menu" style={{ position: 'absolute', right: 0, top: 36, zIndex: 40, minWidth: 250, overflow: 'hidden' }}>
+          <div className="card-row tinted">
+            <div style={{ fontWeight: 900 }}>{user.name || user.email}</div>
+            {user.name && <div className="hint">{user.email}</div>}
+            <div className="hint">{user.admin ? 'Admin · ' : ''}{STATUS[user.status]}</div>
+          </div>
+          {items.map((it) => (
+            <div key={it.label} role="menuitem" className="preset" onClick={() => { setOpen(false); it.onClick() }}>
+              {it.icon}
+              <b>{it.label}</b>
+              {it.hint && <span className="pill warn" style={{ marginLeft: 'auto' }}>{it.hint}</span>}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
 }
 
 function Menu({ items }: { items: { label: string; hint?: string; onClick: () => void }[] }) {
   const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    if (!open) return
-    const close = (e: PointerEvent) => !ref.current?.contains(e.target as Node) && setOpen(false)
-    window.addEventListener('pointerdown', close)
-    return () => window.removeEventListener('pointerdown', close)
-  }, [open])
+  const ref = useOutsideClose(open, () => setOpen(false))
   return (
     <div ref={ref} style={{ position: 'relative' }}>
       <button className={`btn ${open ? 'pressed' : ''}`} onClick={() => setOpen(!open)} aria-haspopup="menu" aria-expanded={open}>
@@ -103,6 +166,7 @@ export function Header({ actions }: { actions: HeaderActions }) {
       <button className="btn yellow" onClick={actions.exportFile} title={`Export (${mod}E)`}>
         <Download size={15} /> Export
       </button>
+      <Account onAdmin={actions.admin} />
     </header>
   )
 }

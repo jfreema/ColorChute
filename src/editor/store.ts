@@ -611,7 +611,9 @@ export class Editor {
       const bmp = await createImageBitmap(blob)
       ctx2d(canvas).drawImage(bmp, 0, 0)
       bmp.close()
-      layers.push({ id: l.id || newId(), name: l.name, visible: l.visible, opacity: l.opacity ?? 1, canvas })
+      // Layer ids go into saved-design addresses on the server, so keep them plain and unique
+      const ok = typeof l.id === 'string' && /^[A-Za-z0-9_-]{1,64}$/.test(l.id) && !layers.some((x) => x.id === l.id)
+      layers.push({ id: ok ? l.id : newId(), name: l.name, visible: l.visible, opacity: l.opacity ?? 1, canvas })
     }
     this.history.clear()
     this.set({

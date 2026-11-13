@@ -15,6 +15,7 @@ requirements.
 - **See it on a shirt.** Preview on a plain square, a simple t-shirt or a realistic t-shirt, in any shirt color.
 - **Send it to the printer.** Export a PNG with or without a background, sized and checked against Epic Sports' specs.
 
-It runs in the web browser, works offline once loaded, and saves your designs in the browser on your own computer.
+Anyone can open it and design. Saving designs needs a Google sign-in that the admin has approved, and saved designs
+follow your account to any computer.
 
 Built with TypeScript, React and Vite. It lives at [colorchute.netcrunchers.workers.dev](https://colorchute.netcrunchers.workers.dev).
