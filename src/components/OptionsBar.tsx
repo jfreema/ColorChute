@@ -1,5 +1,5 @@
 import { editor, useEditor } from '../editor/store'
-import { Check, Crop, PaintBucket, Scaling, Scissors } from './icons'
+import { Check, Crop, PaintBucket, Scissors } from './icons'
 
 function Toggle({ on, label, onClick, title }: { on: boolean; label: string; onClick: () => void; title?: string }) {
   return (
@@ -16,7 +16,7 @@ function Tolerance() {
     <>
       <div className="group" title="How close a color has to be to count as the same. 0 is exact.">
         <label className="lbl" htmlFor="tol">Tolerance</label>
-        <input id="tol" type="range" min={0} max={100} value={o.tolerance}
+        <input id="tol" type="range" min={0} max={100} value={o.tolerance} style={{ width: 76 }}
           onChange={(e) => editor.setOptions({ tolerance: +e.target.value })} />
         <span style={{ width: 34 }}>{o.tolerance}%</span>
       </div>
@@ -28,14 +28,12 @@ function Tolerance() {
   )
 }
 
-export function OptionsBar({ onResize }: { onResize: () => void }) {
+export function OptionsBar() {
   const tool = useEditor((s) => s.tool)
   const o = useEditor((s) => s.options)
   const hasSel = useEditor((s) => !!s.selection)
   const crop = useEditor((s) => s.cropRect)
   const dpi = useEditor((s) => s.dpi)
-  const w = useEditor((s) => s.width)
-  const h = useEditor((s) => s.height)
   const inch = (n: number) => (n / dpi).toFixed(2).replace(/\.?0+$/, '')
 
   return (
@@ -86,18 +84,16 @@ export function OptionsBar({ onResize }: { onResize: () => void }) {
         <button className="btn small" onClick={() => editor.deselect()} disabled={!hasSel} title="Deselect (Ctrl+D)">None</button>
         <button className="btn small" onClick={() => editor.invertSelection()} title="Invert selection (Ctrl+Shift+I)">Invert</button>
         <span className="sep" />
-        <button className="btn small" disabled={!hasSel} onClick={() => editor.growSelection()}>Grow</button>
-        <button className="btn small" disabled={!hasSel} onClick={() => editor.shrinkSelection()}>Shrink</button>
-        <input className="field num" style={{ width: 52, height: 24 }} type="number" min={1} max={500} value={o.growBy}
+        <button className="btn small" disabled={!hasSel} onClick={() => editor.growSelection()}
+          title={`Grow the selection by ${o.growBy} px`}>Grow</button>
+        <button className="btn small" disabled={!hasSel} onClick={() => editor.shrinkSelection()}
+          title={`Shrink the selection by ${o.growBy} px`}>Shrink</button>
+        <input className="field num" style={{ width: 46, height: 24 }} type="number" min={1} max={500} value={o.growBy}
           title="Pixels to grow or shrink by" aria-label="Pixels to grow or shrink by"
           onChange={(e) => editor.setOptions({ growBy: Math.max(1, +e.target.value || 1) })} />
-        <span className="hint">px</span>
         <span className="sep" />
         <button className="btn small" disabled={!hasSel} onClick={() => editor.cropToSelection()} title="Crop to selection">
           <Crop size={14} />
-        </button>
-        <button className="btn small" onClick={onResize} title={`Resize: ${w} × ${h} px, ${inch(w)} × ${inch(h)} in`}>
-          <Scaling size={14} /> {w} × {h}
         </button>
       </div>
     </div>

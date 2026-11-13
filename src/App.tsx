@@ -26,6 +26,16 @@ function isTyping(e: KeyboardEvent) {
   return t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement || t.isContentEditable
 }
 
+const FOCUS_KEY = 'colorchute.focus'
+
+function loadFocus() {
+  try {
+    return localStorage.getItem(FOCUS_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
 /** True when the canvas has nothing on it and no unsaved work, so an opened image can just replace it */
 function isBlank() {
   const s = editor.state
@@ -38,6 +48,17 @@ export function App() {
   const toast = useEditor((s) => s.toast)
   const [shownToast, setShownToast] = useState<string | null>(null)
   const openInput = useRef<HTMLInputElement>(null)
+  const [focus, setFocus] = useState(loadFocus)
+  const toggleFocus = useCallback(() => {
+    setFocus((f) => {
+      try {
+        localStorage.setItem(FOCUS_KEY, f ? '0' : '1')
+      } catch {
+        // Private windows can refuse storage; the mode just won't stick
+      }
+      return !f
+    })
+  }, [])
   const placeInput = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -155,6 +176,7 @@ export function App() {
       const tool = TOOLS.find((t) => t.key.toLowerCase() === k)
       if (tool) return editor.setTool(tool.id)
       if (k === 'x') return editor.swapColors()
+      if (k === 'f') return toggleFocus()
       if (k === '1') return editor.setPreview({ mode: 'square' })
       if (k === '2') return editor.setPreview({ mode: 'shirt' })
       if (k === '3') return editor.setPreview({ mode: 'realistic' })
@@ -184,16 +206,16 @@ export function App() {
   const close = () => setModal(null)
 
   return (
-    <div className="app">
-      <Header actions={actions} />
+    <div className={`app ${focus ? 'focus' : ''}`}>
+      {!focus && <Header actions={actions} />}
       <main className="main">
         <Toolbar />
         <section className="center">
-          <OptionsBar onResize={actions.resize} />
-          <Stage onDropFiles={addFiles} />
-          <OptionStrip confirmDiscard={confirmDiscard} />
+          {!focus && <OptionsBar />}
+          <Stage onDropFiles={addFiles} focus={focus} onToggleFocus={toggleFocus} />
+          {!focus && <OptionStrip confirmDiscard={confirmDiscard} />}
         </section>
-        <Sidebar onPlaceImage={actions.placeImage} />
+        {!focus && <Sidebar onPlaceImage={actions.placeImage} />}
       </main>
 
       <input ref={openInput} type="file" hidden accept="image/*,.colorchute,.json"

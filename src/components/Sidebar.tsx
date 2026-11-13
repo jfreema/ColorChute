@@ -229,20 +229,20 @@ function LayersPanel({ onPlaceImage }: { onPlaceImage: () => void }) {
         {active && (
           <div className="card-row tinted row tight">
             <span className="hint">Opacity</span>
-            <input type="range" min={0} max={100} value={Math.round(active.opacity * 100)} style={{ width: 70 }}
-              aria-label="Layer opacity"
+            <input type="range" min={0} max={100} value={Math.round(active.opacity * 100)} style={{ width: 56 }}
+              aria-label="Layer opacity" title={`Opacity ${Math.round(active.opacity * 100)}%`}
               onChange={(e) => editor.updateLayer(active.id, { opacity: +e.target.value / 100 })} />
             <span className="grow" />
             <button className="icon-btn" title="Move up" aria-label="Move layer up" disabled={activeIndex >= layers.length - 1}
-              onClick={() => editor.moveLayer(active.id, 1)}><ArrowUp size={16} /></button>
+              onClick={() => editor.moveLayer(active.id, 1)}><ArrowUp size={15} /></button>
             <button className="icon-btn" title="Move down" aria-label="Move layer down" disabled={activeIndex <= 0}
-              onClick={() => editor.moveLayer(active.id, -1)}><ArrowDown size={16} /></button>
+              onClick={() => editor.moveLayer(active.id, -1)}><ArrowDown size={15} /></button>
             <button className="icon-btn" title="Duplicate" aria-label="Duplicate layer"
-              onClick={() => editor.duplicateLayer()}><Copy size={16} /></button>
+              onClick={() => editor.duplicateLayer()}><Copy size={15} /></button>
             <button className="icon-btn" title="Merge down" aria-label="Merge down" disabled={activeIndex <= 0}
-              onClick={() => editor.mergeDown()}><Merge size={16} /></button>
+              onClick={() => editor.mergeDown()}><Merge size={15} /></button>
             <button className="icon-btn" title="Delete layer" aria-label="Delete layer" disabled={layers.length <= 1}
-              onClick={() => editor.deleteLayer()}><Trash2 size={16} /></button>
+              onClick={() => editor.deleteLayer()}><Trash2 size={15} /></button>
           </div>
         )}
       </div>
@@ -259,21 +259,14 @@ function PreviewPanel() {
   )
   return (
     <>
-      <div className="section-label">Preview</div>
+      <div className="section-label">
+        Preview
+        <span className="sub">{p.mode === 'square' ? 'Square' : p.mode === 'shirt' ? 'T-shirt' : 'Realistic shirt'}</span>
+      </div>
       <div className="card">
-        <div className="card-row">
-          <div className="segmented" style={{ display: 'flex' }}>
-            {(['square', 'shirt', 'realistic'] as const).map((m) => (
-              <button key={m} className={`grow ${p.mode === m ? 'active' : ''}`} onClick={() => editor.setPreview({ mode: m })}
-                style={{ justifyContent: 'center' }}>
-                {m === 'square' ? 'Square' : m === 'shirt' ? 'T-shirt' : 'Realistic'}
-              </button>
-            ))}
-          </div>
-        </div>
         {p.mode === 'square' ? (
           <div className="card-row">
-            <div style={{ marginBottom: 8 }}><b>Square color</b></div>
+            <div style={{ marginBottom: 6 }}><b>Square color</b></div>
             <div className="swatch-grid">
               <button className={`swatch checker ${p.boardColor === 'transparent' ? 'selected' : ''}`} title="Transparent"
                 aria-label="Transparent" onClick={() => editor.setPreview({ boardColor: 'transparent' })} />
@@ -288,7 +281,7 @@ function PreviewPanel() {
         ) : (
           <>
             <div className="card-row">
-              <div style={{ marginBottom: 8 }}><b>Shirt color</b></div>
+              <div style={{ marginBottom: 6 }}><b>Shirt color</b></div>
               <div className="swatch-grid">
                 {SHIRT_COLORS.map((c) => (
                   <button key={c.hex} className={`swatch ${p.shirtColor === c.hex ? 'selected' : ''}`}

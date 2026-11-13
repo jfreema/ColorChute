@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useDesigns } from '../editor/designs'
 import { editor, useEditor } from '../editor/store'
-import { ChevronDown, Download, FilePlus, FolderOpen, Library, Redo2, Save, Undo2 } from './icons'
+import { ChevronDown, Download, FilePlus, FolderOpen, Library, Redo2, Save, Scaling, Undo2 } from './icons'
 import { Logo } from './Logo'
 
 export interface HeaderActions {
@@ -52,20 +52,27 @@ export function Header({ actions }: { actions: HeaderActions }) {
   const undoLabel = useEditor((s) => s.undoLabel)
   const redoLabel = useEditor((s) => s.redoLabel)
   const busy = useDesigns((s) => s.busy)
+  const w = useEditor((s) => s.width)
+  const h = useEditor((s) => s.height)
+  const dpi = useEditor((s) => s.dpi)
+  const inch = (n: number) => (n / dpi).toFixed(2).replace(/\.?0+$/, '')
   const optionName = useDesigns((s) => s.options.find((o) => o.id === s.optionId)?.name)
   const mac = /Mac|iPhone|iPad/.test(navigator.platform)
   const mod = mac ? '⌘' : 'Ctrl+'
 
   return (
     <header className="header">
-      <span className="icon-chip" style={{ background: '#fff', width: 34, height: 34, borderRadius: 9 }}>
-        <Logo size={26} />
+      <span className="icon-chip" style={{ background: '#fff', width: 30, height: 30, borderRadius: 8 }}>
+        <Logo size={23} />
       </span>
       <span className="title">ColorChute</span>
       <input className="name" value={name} aria-label="Design name" title="Design name"
         onChange={(e) => editor.setName(e.target.value)} />
       {optionName && <span className="pill pass" style={{ background: 'var(--sky)' }}>{optionName}</span>}
       {dirty && <span className="dirty-dot" title="Unsaved changes" />}
+      <button className="btn small" onClick={actions.resize} title={`Resize or change canvas size: ${w} × ${h} px, ${inch(w)} × ${inch(h)} in at ${dpi} DPI`}>
+        <Scaling size={14} /> {w} × {h}
+      </button>
       <span className="grow" />
       <button className="btn icon" disabled={!canUndo} onClick={() => editor.undo()} title={`Undo ${undoLabel ?? ''} (${mod}Z)`} aria-label="Undo">
         <Undo2 size={15} />

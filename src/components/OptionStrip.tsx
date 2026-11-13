@@ -13,12 +13,10 @@ export function OptionStrip({ confirmDiscard }: { confirmDiscard: (then: () => v
   const [deleting, setDeleting] = useState<string | null>(null)
 
   return (
-    <div>
-      <div className="section-label" style={{ marginTop: 0 }}>
-        Color options
-        <span style={{ textTransform: 'none', letterSpacing: 0, fontWeight: 700, opacity: 0.85 }}>
-          {options.length ? 'Click one to switch, double-click to rename' : 'Save the colors you have now, swap inks, then save another to compare'}
-        </span>
+    <div className="strip-row">
+      <div className="strip-label"
+        title={options.length ? 'Click one to switch, double-click to rename' : 'Save the colors you have now, swap inks, then save another to compare'}>
+        Color<br />options
       </div>
       <div className="strip">
         {options.map((o) => (
@@ -84,8 +82,9 @@ export function OptionStrip({ confirmDiscard }: { confirmDiscard: (then: () => v
             )}
           </div>
         ))}
-        <button className="card option-card add" disabled={busy} onClick={() => saveAsNewOption()}>
-          <Plus size={18} />
+        <button className="card option-card add" disabled={busy} onClick={() => saveAsNewOption()}
+          title="Save the colors you have now as another option to compare">
+          <Plus size={16} />
           {options.length ? 'Save as new option' : 'Save first option'}
         </button>
       </div>

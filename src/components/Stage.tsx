@@ -6,7 +6,7 @@ import {
   basicShirt, PRINT_CENTER_X, PRINT_TOP, printScale, realisticShirtBase, realisticShirtHighlights,
   realisticShirtShadows, SHIRT_H, SHIRT_W, svgUrl,
 } from '../lib/shirt'
-import { Maximize, Shirt, Square, ZoomIn, ZoomOut } from './icons'
+import { Maximize, Maximize2, Minimize2, Redo2, Shirt, Square, Undo2, ZoomIn, ZoomOut } from './icons'
 
 interface View {
   zoom: number
@@ -32,7 +32,11 @@ function normRect(x0: number, y0: number, x1: number, y1: number, w: number, h: 
   return { x: ax, y: ay, w: bx - ax, h: by - ay }
 }
 
-export function Stage({ onDropFiles }: { onDropFiles: (files: FileList) => void }) {
+export function Stage({ onDropFiles, focus, onToggleFocus }: {
+  onDropFiles: (files: FileList) => void
+  focus: boolean
+  onToggleFocus: () => void
+}) {
   const width = useEditor((s) => s.width)
   const height = useEditor((s) => s.height)
   const dpi = useEditor((s) => s.dpi)
@@ -42,6 +46,8 @@ export function Stage({ onDropFiles }: { onDropFiles: (files: FileList) => void 
   const preview = useEditor((s) => s.preview)
   const cropRect = useEditor((s) => s.cropRect)
   const brushSize = useEditor((s) => s.options.brushSize)
+  const canUndo = useEditor((s) => s.canUndo)
+  const canRedo = useEditor((s) => s.canRedo)
 
   const box = useRef<HTMLDivElement>(null)
   const art = useRef<HTMLCanvasElement>(null)
@@ -50,6 +56,8 @@ export function Stage({ onDropFiles }: { onDropFiles: (files: FileList) => void 
   const viewRef = useRef(view)
   viewRef.current = view
   const [size, setSize] = useState({ w: 800, h: 600 })
+  /** True until the person zooms or pans, so a resized stage refits instead of drifting */
+  const fitted = useRef(true)
   const drag = useRef<Drag | null>(null)
   const cursor = useRef<{ x: number; y: number } | null>(null)
   const [space, setSpace] = useState(false)
@@ -74,6 +82,7 @@ export function Stage({ onDropFiles }: { onDropFiles: (files: FileList) => void 
     const pad = 28
     const zoom = Math.min((size.w - pad * 2) / b.w, (size.h - pad * 2) / b.h)
     setView({ zoom, x: size.w / 2 - (b.x + b.w / 2) * zoom, y: size.h / 2 - (b.y + b.h / 2) * zoom })
+    fitted.current = true
   }, [scene, size])
 
   useLayoutEffect(() => {
@@ -86,6 +95,17 @@ export function Stage({ onDropFiles }: { onDropFiles: (files: FileList) => void 
 
   // Refit when the document or background changes shape
   useEffect(fit, [width, height, preview.mode, preview.sizeMode, size.w > 0 && size.h > 0]) // eslint-disable-line
+
+  // When the stage itself changes size (focus mode, window resize), refit if the view was fitted, otherwise keep
+  // the same spot in the middle
+  const lastSize = useRef(size)
+  useEffect(() => {
+    const was = lastSize.current
+    lastSize.current = size
+    if (was.w === size.w && was.h === size.h) return
+    if (fitted.current) fit()
+    else setView((v) => ({ ...v, x: v.x + (size.w - was.w) / 2, y: v.y + (size.h - was.h) / 2 }))
+  }, [size.w, size.h]) // eslint-disable-line
 
   useEffect(() => {
     const onFit = () => fit()
@@ -230,6 +250,7 @@ export function Stage({ onDropFiles }: { onDropFiles: (files: FileList) => void 
   }
 
   const zoomAt = useCallback((factor: number, cx: number, cy: number) => {
+    fitted.current = false
     setView((v) => {
       const zoom = Math.min(32, Math.max(0.01, v.zoom * factor))
       const k = zoom / v.zoom
@@ -243,7 +264,10 @@ export function Stage({ onDropFiles }: { onDropFiles: (files: FileList) => void 
       e.preventDefault()
       const r = el.getBoundingClientRect()
       if (e.ctrlKey || e.metaKey) zoomAt(Math.exp(-e.deltaY * 0.01), e.clientX - r.left, e.clientY - r.top)
-      else setView((v) => ({ ...v, x: v.x - e.deltaX, y: v.y - e.deltaY }))
+      else {
+        fitted.current = false
+        setView((v) => ({ ...v, x: v.x - e.deltaX, y: v.y - e.deltaY }))
+      }
     }
     el.addEventListener('wheel', onWheel, { passive: false })
     return () => el.removeEventListener('wheel', onWheel)
@@ -322,6 +346,7 @@ export function Stage({ onDropFiles }: { onDropFiles: (files: FileList) => void 
     cursor.current = p
     const d = drag.current
     if (d?.kind === 'pan') {
+      fitted.current = false
       setView((v) => ({ ...v, x: d.vx + e.clientX - d.sx, y: d.vy + e.clientY - d.sy }))
     } else if (d?.kind === 'rect') {
       d.x1 = p.x
@@ -436,7 +461,7 @@ export function Stage({ onDropFiles }: { onDropFiles: (files: FileList) => void 
           ] as const).map(([m, label, icon]) => (
             <button key={m} className={preview.mode === m ? 'active' : ''} role="radio" aria-checked={preview.mode === m}
               onClick={() => editor.setPreview({ mode: m })} title={`${label} background (${m === 'square' ? 1 : m === 'shirt' ? 2 : 3})`}>
-              {icon} {label}
+              {icon} <span className="lbl">{label}</span>
             </button>
           ))}
         </div>
@@ -453,6 +478,24 @@ export function Stage({ onDropFiles }: { onDropFiles: (files: FileList) => void 
         </button>
         <button className="btn small icon" title="Fit (Ctrl 0)" onClick={fit}>
           <Maximize size={14} />
+        </button>
+      </div>
+      <div className="float tr" onPointerDown={(e) => e.stopPropagation()}>
+        {focus && (
+          <>
+            <button className="btn small icon" disabled={!canUndo} onClick={() => editor.undo()} title="Undo" aria-label="Undo">
+              <Undo2 size={14} />
+            </button>
+            <button className="btn small icon" disabled={!canRedo} onClick={() => editor.redo()} title="Redo" aria-label="Redo">
+              <Redo2 size={14} />
+            </button>
+          </>
+        )}
+        <button className={`btn small ${focus ? 'sky' : ''}`} onClick={onToggleFocus} aria-pressed={focus}
+          title={focus ? 'Bring back the panels (F)' : 'Hide the panels and give the canvas the whole window (F)'}>
+          {focus ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+          {focus ? 'Show panels' : 'Focus'}
+          <span className="kbd">F</span>
         </button>
       </div>
       {dropping && <div className="drop-hint">Drop an image to add it as a layer</div>}
