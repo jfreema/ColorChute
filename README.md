@@ -17,4 +17,4 @@ requirements.
 
 It runs in the web browser, works offline once loaded, and saves your designs in the browser on your own computer.
 
-Built with TypeScript, React and Vite, and hosted as a static site on Cloudflare Pages.
+Built with TypeScript, React and Vite. It lives at [colorchute.netcrunchers.workers.dev](https://colorchute.netcrunchers.workers.dev).

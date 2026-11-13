@@ -1,4 +1,8 @@
-# Cloudflare Pages (free plan). The site is the static build in dist/; nothing runs on a server.
+# Cloudflare Worker that serves the built site (dist/) as static assets.
+# Live at https://colorchute.netcrunchers.workers.dev
 name = "colorchute"
-pages_build_output_dir = "dist"
 compatibility_date = "2026-11-01"
+
+[assets]
+directory = "./dist"
+not_found_handling = "single-page-application"

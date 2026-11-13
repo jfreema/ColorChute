@@ -6,7 +6,8 @@ Notes for any coding agent working on ColorChute.
 
 A browser image editor for 2 and 3 color team shirt art: layers, fill bucket, magic wand, selections, crop, resize,
 saved designs with color options, shirt previews and Epic Sports exports. TypeScript, React 18 and Vite, no backend.
-It deploys as static files to Cloudflare Pages (free plan). [README.md](README.md) is a short, plain overview; keep
+It deploys as a Cloudflare Worker that serves `dist/` as static assets (free plan, `wrangler.toml`), live at
+https://colorchute.netcrunchers.workers.dev; `npm run deploy` builds and deploys. [README.md](README.md) is a short, plain overview; keep
 it that way. The detailed user guide (tools, shortcuts, export specs, hosting steps) is the "ColorChute Guide" doc in
 Jared's Claude project, not a repo file.
 
