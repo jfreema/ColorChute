@@ -16,6 +16,8 @@ export interface ColorOption {
   activeId: string
   /** The main colors, for showing the scheme at a glance */
   swatches: string[]
+  /** The preview shirt color it was saved with, so each option brings its own shirt back */
+  shirtColor?: string
   thumbnail: Blob
   layers: { id: string; name: string; visible: boolean; opacity: number; png: Blob }[]
 }
@@ -33,8 +35,10 @@ export interface DesignsState {
   designId: string | null
   optionId: string | null
   designName: string
-  options: { id: string; name: string; swatches: string[]; thumb: string }[]
-  library: { id: string; name: string; updatedAt: number; optionCount: number; thumb: string; swatches: string[] }[]
+  options: { id: string; name: string; swatches: string[]; thumb: string; shirt?: string }[]
+  library: {
+    id: string; name: string; updatedAt: number; optionCount: number; thumb: string; swatches: string[]; shirt?: string
+  }[]
   busy: boolean
 }
 
@@ -65,11 +69,11 @@ export function useDesigns<T>(select: (s: DesignsState) => T): T {
 
 export const getDesigns = () => state
 
-const toBlob = (c: HTMLCanvasElement, type = 'image/png') =>
+export const toBlob = (c: HTMLCanvasElement, type = 'image/png') =>
   new Promise<Blob>((res, rej) => c.toBlob((b) => (b ? res(b) : rej(new Error('Could not encode image'))), type))
 
-async function thumbnail(): Promise<Blob> {
-  const src = editor.composite()
+/** A small PNG of the art, at most 240 px on its long side */
+export function thumbnailOf(src: HTMLCanvasElement): Promise<Blob> {
   const s = Math.min(1, 240 / Math.max(src.width, src.height))
   const c = makeCanvas(Math.max(1, Math.round(src.width * s)), Math.max(1, Math.round(src.height * s)))
   const g = ctx2d(c)
@@ -78,11 +82,14 @@ async function thumbnail(): Promise<Blob> {
   return toBlob(c)
 }
 
+const thumbnail = () => thumbnailOf(editor.composite())
+
 async function snapshotOption(id: string, name: string): Promise<ColorOption> {
   const s = editor.state
   const swatches = dominantColors(readPixels(editor.composite()), 6).map((c) => c.hex)
   return {
     id, name, updatedAt: Date.now(), width: s.width, height: s.height, dpi: s.dpi, activeId: s.activeId, swatches,
+    shirtColor: s.preview.shirtColor,
     thumbnail: await thumbnail(),
     layers: await Promise.all(
       s.layers.map(async (l) => ({
@@ -105,12 +112,15 @@ async function loadOption(o: ColorOption) {
     width: o.width, height: o.height, dpi: o.dpi, layers,
     activeId: layers.some((l) => l.id === o.activeId) ? o.activeId : layers[0].id,
   })
+  if (o.shirtColor) editor.setPreview({ shirtColor: o.shirtColor })
 }
 
 function summarize(d: Design) {
   set({
     designId: d.id, designName: d.name,
-    options: d.options.map((o) => ({ id: o.id, name: o.name, swatches: o.swatches, thumb: urlFor(o.thumbnail) })),
+    options: d.options.map((o) => ({
+      id: o.id, name: o.name, swatches: o.swatches, thumb: urlFor(o.thumbnail), shirt: o.shirtColor,
+    })),
   })
 }
 
@@ -138,7 +148,7 @@ export async function refreshLibrary() {
       const o = d.options[0]
       return {
         id: d.id, name: d.name, updatedAt: d.updatedAt, optionCount: d.options.length,
-        thumb: o ? urlFor(o.thumbnail) : '', swatches: o?.swatches ?? [],
+        thumb: o ? urlFor(o.thumbnail) : '', swatches: o?.swatches ?? [], shirt: o?.shirtColor,
       }
     }),
   })

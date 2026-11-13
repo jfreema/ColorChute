@@ -13,6 +13,7 @@ import { Dialog } from './components/Dialog'
 import { Save } from './components/icons'
 import { readPixels } from './editor/doc'
 import { detachDesign, getDesigns, refreshLibrary, save, saveAsNewOption } from './editor/designs'
+import { seedSamples } from './editor/samples'
 import { download } from './editor/exporting'
 import { contentBounds } from './editor/pixels'
 import { editor, ProjectFile, useEditor } from './editor/store'
@@ -69,7 +70,7 @@ export function App() {
   }, [toast])
 
   useEffect(() => {
-    refreshLibrary().catch(() => {})
+    refreshLibrary().then(seedSamples).catch(() => {})
     const warn = (e: BeforeUnloadEvent) => {
       if (editor.state.dirty) {
         e.preventDefault()

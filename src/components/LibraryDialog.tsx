@@ -28,7 +28,9 @@ export function LibraryDialog({ onClose, confirmDiscard }: { onClose: () => void
             onClick={() => confirmDiscard(() => openDesign(d.id).then(onClose))}
             style={d.id === current ? { outline: '3px solid var(--yellow)', outlineOffset: 1 } : undefined}
           >
-            <div className="thumb checker">{d.thumb && <img src={d.thumb} alt="" />}</div>
+            <div className="thumb checker" style={d.shirt ? { background: d.shirt } : undefined}>
+              {d.thumb && <img src={d.thumb} alt="" />}
+            </div>
             <div className="meta">
               {renaming === d.id ? (
                 <input

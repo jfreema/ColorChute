@@ -29,7 +29,7 @@ export function OptionStrip({ confirmDiscard }: { confirmDiscard: (then: () => v
             onDoubleClick={() => setRenaming(o.id)}
             onKeyDown={(e) => e.key === 'Enter' && o.id !== optionId && confirmDiscard(() => openOption(o.id))}
           >
-            <div className="thumb checker"><img src={o.thumb} alt="" /></div>
+            <div className="thumb checker" style={o.shirt ? { background: o.shirt } : undefined}><img src={o.thumb} alt="" /></div>
             <div className="meta">
               {renaming === o.id ? (
                 <input
