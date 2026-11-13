@@ -2,8 +2,8 @@ import { colorName } from '../lib/palettes'
 import { DEFAULT_DPI, ExportSettings, slug, TARGETS } from '../lib/printSpecs'
 import { setPngDpi } from '../lib/png'
 import {
-  basicShirt, loadSvg, PRINT_CENTER_X, PRINT_TOP, printScale, realisticShirtBase, realisticShirtHighlights,
-  realisticShirtShadows, SHIRT_H, SHIRT_W,
+  basicShirt, loadImage, loadSvg, PRINT_CENTER_X, PRINT_TOP, printScale, SHIRT_H, SHIRT_W, STUDIO,
+  studioLightOpacity,
 } from '../lib/shirt'
 import { makeZip } from '../lib/zip'
 import { ctx2d, makeCanvas, readPixels } from './doc'
@@ -119,24 +119,45 @@ function dedupe(checks: Check[]): Check[] {
 /** The art on a shirt of the preview's color, as the proof check picture */
 export async function renderMockup(art: HTMLCanvasElement, preview: PreviewSettings, dpi: number | null): Promise<HTMLCanvasElement> {
   const k = 1.6
-  const c = makeCanvas(Math.round(SHIRT_W * k), Math.round(SHIRT_H * k))
-  const g = ctx2d(c)
-  g.fillStyle = preview.stageColor
-  g.fillRect(0, 0, c.width, c.height)
   const realistic = preview.mode === 'realistic'
-  g.drawImage(await loadSvg(realistic ? realisticShirtBase(preview.shirtColor) : basicShirt(preview.shirtColor)), 0, 0, c.width, c.height)
-  const s = printScale(art.width, art.height, dpi ?? DEFAULT_DPI, dpi ? 'actual' : 'fit') * k
-  const w = art.width * s, h = art.height * s
+  // The picture's frame in shirt units: the studio photo, or the drawn shirt's box
+  const f = realistic ? STUDIO.rect : { x: 0, y: 0, w: SHIRT_W, h: SHIRT_H }
+  const c = makeCanvas(Math.round(f.w * k), Math.round(f.h * k))
+  const g = ctx2d(c)
   g.imageSmoothingQuality = 'high'
-  g.drawImage(art, PRINT_CENTER_X * k - w / 2, PRINT_TOP * k, w, h)
   if (realistic) {
+    const [backdrop, shade, light] = await Promise.all([STUDIO.backdrop, STUDIO.shade, STUDIO.light].map(loadImage))
+    g.drawImage(backdrop, 0, 0, c.width, c.height)
+    // the shirt: its color, cut to the shirt's outline
+    const fabric = makeCanvas(c.width, c.height)
+    const fg = ctx2d(fabric)
+    fg.fillStyle = preview.shirtColor
+    fg.fillRect(0, 0, c.width, c.height)
+    fg.globalCompositeOperation = 'destination-in'
+    fg.drawImage(shade, 0, 0, c.width, c.height)
+    g.drawImage(fabric, 0, 0)
+    drawArt(g, art, dpi, f, k)
     g.globalCompositeOperation = 'multiply'
-    g.drawImage(await loadSvg(realisticShirtShadows(preview.shirtColor)), 0, 0, c.width, c.height)
+    g.drawImage(shade, 0, 0, c.width, c.height)
     g.globalCompositeOperation = 'screen'
-    g.drawImage(await loadSvg(realisticShirtHighlights(preview.shirtColor)), 0, 0, c.width, c.height)
+    g.globalAlpha = studioLightOpacity(preview.shirtColor)
+    g.drawImage(light, 0, 0, c.width, c.height)
+    g.globalAlpha = 1
     g.globalCompositeOperation = 'source-over'
+  } else {
+    g.fillStyle = preview.stageColor
+    g.fillRect(0, 0, c.width, c.height)
+    g.drawImage(await loadSvg(basicShirt(preview.shirtColor)), 0, 0, c.width, c.height)
+    drawArt(g, art, dpi, f, k)
   }
   return c
+}
+
+/** Puts the art on the mockup's print area, at print size when the DPI is known */
+function drawArt(g: CanvasRenderingContext2D, art: HTMLCanvasElement, dpi: number | null, f: { x: number; y: number }, k: number) {
+  const s = printScale(art.width, art.height, dpi ?? DEFAULT_DPI, dpi ? 'actual' : 'fit') * k
+  const w = art.width * s, h = art.height * s
+  g.drawImage(art, (PRINT_CENTER_X - f.x) * k - w / 2, (PRINT_TOP - f.y) * k, w, h)
 }
 
 interface Downloads {

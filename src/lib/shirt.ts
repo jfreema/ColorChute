@@ -28,11 +28,6 @@ function shade(hex: string, amount: number): string {
   return `rgb(${f(r)},${f(g)},${f(b)})`
 }
 
-function isLight(hex: string) {
-  const [r, g, b] = hexToRgba(hex)
-  return 0.299 * r + 0.587 * g + 0.114 * b > 150
-}
-
 const svg = (body: string, defs = '') =>
   `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${SHIRT_W} ${SHIRT_H}" width="${SHIRT_W}" height="${SHIRT_H}">` +
   `<defs>${defs}</defs>${body}</svg>`
@@ -49,95 +44,39 @@ export function basicShirt(color: string): string {
   )
 }
 
-/** The fabric under the print: color, inside of the neck and ribbed collar */
-export function realisticShirtBase(color: string): string {
-  const defs =
-    `<linearGradient id="collar" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${shade(color, -0.08)}"/>` +
-    `<stop offset="1" stop-color="${shade(color, -0.16)}"/></linearGradient>`
-  return svg(
-    `<path d="${BODY}" fill="${color}"/>` +
-      `<path d="${INSIDE_NECK}" fill="${shade(color, -0.35)}"/>` +
-      `<path d="${COLLAR}" fill="none" stroke="url(#collar)" stroke-width="24" stroke-linecap="round"/>` +
-      `<path d="${COLLAR}" fill="none" stroke="${shade(color, -0.3)}" stroke-width="2" stroke-opacity="0.6" ` +
-      `transform="translate(0 12)"/>` +
-      `<path d="${SLEEVE_HEMS} ${HEM}" fill="none" stroke="${shade(color, -0.3)}" stroke-width="3" ` +
-      `stroke-dasharray="6 5" stroke-opacity="0.7"/>`,
-    defs,
-  )
+/**
+ * The realistic shirt: a studio photo of a blank crew-neck tee on a gray backdrop, made from Jared's reference mockup
+ * with the print and neck label taken out. It comes as three images in public/shirt, all the same frame:
+ * - studio.jpg, the backdrop with no shirt
+ * - shade.webp, the fabric's light and shadow as gray (multiply), with the shirt's outline in its alpha
+ * - light.webp, the sheen on the folds (screen), which dark shirts need to show any folds at all
+ * The shirt itself is the chosen color, cut out with shade.webp's alpha. `rect` places the frame in shirt units.
+ */
+export const STUDIO = {
+  rect: { x: -124.3, y: 9.3, w: 1249.8, h: 1132.5 },
+  backdrop: `${import.meta.env.BASE_URL}shirt/studio.jpg`,
+  shade: `${import.meta.env.BASE_URL}shirt/shade.webp`,
+  light: `${import.meta.env.BASE_URL}shirt/light.webp`,
 }
 
-/** Shadows to multiply over the fabric and the print: folds, sides, sleeves and weave */
-export function realisticShirtShadows(color: string): string {
-  const dark = isLight(color) ? 0.16 : 0.5
-  const defs =
-    `<clipPath id="c"><path d="${BODY}"/></clipPath>` +
-    `<filter id="b8" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="9"/></filter>` +
-    `<filter id="b20" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="22"/></filter>` +
-    `<filter id="weave"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="3"/>` +
-    `<feColorMatrix values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -1.3 1.05"/></filter>` +
-    `<linearGradient id="sides" x1="0" y1="0" x2="1" y2="0">` +
-    `<stop offset="0.2" stop-color="#000" stop-opacity="${dark * 0.9}"/>` +
-    `<stop offset="0.34" stop-color="#000" stop-opacity="0"/>` +
-    `<stop offset="0.66" stop-color="#000" stop-opacity="0"/>` +
-    `<stop offset="0.8" stop-color="#000" stop-opacity="${dark * 0.9}"/></linearGradient>` +
-    `<linearGradient id="down" x1="0" y1="0" x2="0" y2="1">` +
-    `<stop offset="0.6" stop-color="#000" stop-opacity="0"/>` +
-    `<stop offset="1" stop-color="#000" stop-opacity="${dark * 0.5}"/></linearGradient>`
-  const folds = [
-    // Armpit folds sweeping toward the middle
-    'M236 372 C292 420 322 462 336 520', 'M764 372 C708 420 678 462 664 520',
-    // Sleeve creases
-    'M128 300 C150 340 166 384 172 446', 'M872 300 C850 340 834 384 828 446',
-  ]
-  return svg(
-    `<g clip-path="url(#c)">` +
-      `<rect width="1000" height="1100" fill="url(#sides)" filter="url(#b8)"/>` +
-      `<rect width="1000" height="1100" fill="url(#down)"/>` +
-      `<path d="M228 362 L184 476 L25 420 L94 250 C118 190 158 138 210 118 Z" fill="#000" ` +
-      `fill-opacity="${dark * 0.35}" filter="url(#b20)"/>` +
-      `<path d="M772 362 L816 476 L975 420 L906 250 C882 190 842 138 790 118 Z" fill="#000" ` +
-      `fill-opacity="${dark * 0.35}" filter="url(#b20)"/>` +
-      folds.map((d) => `<path d="${d}" fill="none" stroke="#000" stroke-opacity="${dark * 0.4}" ` +
-        `stroke-width="22" stroke-linecap="round" filter="url(#b20)"/>`).join('') +
-      `<path d="M228 362 C236 600 230 850 218 1040" fill="none" stroke="#000" stroke-opacity="${dark}" ` +
-      `stroke-width="30" filter="url(#b8)"/>` +
-      `<path d="M772 362 C764 600 770 850 782 1040" fill="none" stroke="#000" stroke-opacity="${dark}" ` +
-      `stroke-width="30" filter="url(#b8)"/>` +
-      `<rect width="1000" height="1100" filter="url(#weave)" opacity="${isLight(color) ? 0.07 : 0.14}"/>` +
-      `</g>`,
-    defs,
-  )
-}
-
-/** Highlights to screen over everything, where the fabric catches the light */
-export function realisticShirtHighlights(color: string): string {
-  const lift = isLight(color) ? 0.18 : 0.09
-  const defs =
-    `<clipPath id="c"><path d="${BODY}"/></clipPath>` +
-    `<filter id="b14" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="20"/></filter>`
-  const ridges = [
-    'M262 410 C306 446 344 492 364 552', 'M738 410 C694 446 656 492 636 552',
-    'M420 300 C470 330 530 330 580 300',
-  ]
-  return svg(
-    `<g clip-path="url(#c)">` +
-      ridges.map((d) => `<path d="${d}" fill="none" stroke="#fff" stroke-opacity="${lift}" stroke-width="34" ` +
-        `stroke-linecap="round" filter="url(#b14)"/>`).join('') +
-      `</g>`,
-    defs,
-  )
+/** How strongly the sheen shows: a little on light shirts, a lot on dark ones */
+export function studioLightOpacity(hex: string): number {
+  const [r, g, b] = hexToRgba(hex)
+  return 0.18 + 0.42 * (1 - (0.299 * r + 0.587 * g + 0.114 * b) / 255)
 }
 
 export const svgUrl = (s: string) => 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(s)
 
-export function loadSvg(s: string): Promise<HTMLImageElement> {
+export function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new Image()
     img.onload = () => resolve(img)
     img.onerror = () => reject(new Error('Could not draw the shirt'))
-    img.src = svgUrl(s)
+    img.src = src
   })
 }
+
+export const loadSvg = (s: string) => loadImage(svgUrl(s))
 
 /** Viewbox units per document pixel, for placing the art on the shirt */
 export function printScale(docW: number, docH: number, dpi: number, mode: 'fit' | 'actual'): number {

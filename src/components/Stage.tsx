@@ -3,8 +3,7 @@ import { Rect } from '../editor/pixels'
 import { outlineSegments, SelectMode } from '../editor/selection'
 import { editor, useEditor } from '../editor/store'
 import {
-  basicShirt, PRINT_CENTER_X, PRINT_TOP, printScale, realisticShirtBase, realisticShirtHighlights,
-  realisticShirtShadows, SHIRT_H, SHIRT_W, svgUrl,
+  basicShirt, PRINT_CENTER_X, PRINT_TOP, printScale, SHIRT_H, SHIRT_W, STUDIO, studioLightOpacity, svgUrl,
 } from '../lib/shirt'
 import { Maximize, Maximize2, Minimize2, Redo2, Shirt, Square, Undo2, ZoomIn, ZoomOut } from './icons'
 
@@ -70,11 +69,17 @@ export function Stage({ onDropFiles, focus, onToggleFocus }: {
     if (preview.mode === 'square') {
       const side = Math.max(width, height) * 1.12
       const board = { x: width / 2 - side / 2, y: height / 2 - side / 2, w: side, h: side }
-      return { bounds: board, board, shirt: null }
+      return { bounds: board, board, shirt: null, studio: null }
     }
     const s = printScale(width, height, dpi, preview.sizeMode)
-    const shirt = { x: width / 2 - PRINT_CENTER_X / s, y: -PRINT_TOP / s, w: SHIRT_W / s, h: SHIRT_H / s }
-    return { bounds: shirt, board: null, shirt }
+    // shirt units to document pixels, with the print area's top center on the art's top center
+    const toDoc = (r: Rect) => ({ x: width / 2 + (r.x - PRINT_CENTER_X) / s, y: (r.y - PRINT_TOP) / s, w: r.w / s, h: r.h / s })
+    if (preview.mode === 'realistic') {
+      const studio = toDoc(STUDIO.rect)
+      return { bounds: studio, board: null, shirt: null, studio }
+    }
+    const shirt = toDoc({ x: 0, y: 0, w: SHIRT_W, h: SHIRT_H })
+    return { bounds: shirt, board: null, shirt, studio: null }
   }, [preview.mode, preview.sizeMode, width, height, dpi])
 
   const fit = useCallback(() => {
@@ -382,17 +387,11 @@ export function Stage({ onDropFiles, focus, onToggleFocus }: {
   const place = (r: { x: number; y: number; w: number; h: number }): React.CSSProperties => ({
     left: x + r.x * zoom, top: y + r.y * zoom, width: r.w * zoom, height: r.h * zoom,
   })
-  const shirtImgs = useMemo(() => {
-    if (preview.mode === 'shirt') return { base: svgUrl(basicShirt(preview.shirtColor)), shadow: null, light: null }
-    if (preview.mode === 'realistic') {
-      return {
-        base: svgUrl(realisticShirtBase(preview.shirtColor)),
-        shadow: svgUrl(realisticShirtShadows(preview.shirtColor)),
-        light: svgUrl(realisticShirtHighlights(preview.shirtColor)),
-      }
-    }
-    return null
-  }, [preview.mode, preview.shirtColor])
+  const basicShirtUrl = useMemo(
+    () => (preview.mode === 'shirt' ? svgUrl(basicShirt(preview.shirtColor)) : null),
+    [preview.mode, preview.shirtColor],
+  )
+  const studioMask = `url(${STUDIO.shade})`
 
   const cursorStyle =
     space || tool === 'hand' ? (drag.current?.kind === 'pan' ? 'grabbing' : 'grab')
@@ -435,7 +434,16 @@ export function Stage({ onDropFiles, focus, onToggleFocus }: {
           }}
         />
       )}
-      {scene.shirt && shirtImgs && <img className="layer-img" alt="" src={shirtImgs.base} style={place(scene.shirt)} />}
+      {scene.shirt && basicShirtUrl && <img className="layer-img" alt="" src={basicShirtUrl} style={place(scene.shirt)} />}
+      {scene.studio && (
+        <>
+          <img className="layer-img" alt="" src={STUDIO.backdrop} style={place(scene.studio)} />
+          <div className="layer-img" style={{
+            ...place(scene.studio), background: preview.shirtColor,
+            WebkitMaskImage: studioMask, maskImage: studioMask, WebkitMaskSize: '100% 100%', maskSize: '100% 100%',
+          }} />
+        </>
+      )}
       <canvas
         ref={art}
         className="art"
@@ -444,11 +452,12 @@ export function Stage({ onDropFiles, focus, onToggleFocus }: {
           imageRendering: zoom >= 2 ? 'pixelated' : 'auto',
         }}
       />
-      {scene.shirt && shirtImgs?.shadow && (
-        <img className="layer-img blend-multiply" alt="" src={shirtImgs.shadow} style={place(scene.shirt)} />
-      )}
-      {scene.shirt && shirtImgs?.light && (
-        <img className="layer-img blend-screen" alt="" src={shirtImgs.light} style={place(scene.shirt)} />
+      {scene.studio && (
+        <>
+          <img className="layer-img blend-multiply" alt="" src={STUDIO.shade} style={place(scene.studio)} />
+          <img className="layer-img blend-screen" alt="" src={STUDIO.light}
+            style={{ ...place(scene.studio), opacity: studioLightOpacity(preview.shirtColor) }} />
+        </>
       )}
       <canvas ref={overlay} className="overlay" style={{ width: size.w, height: size.h }} />
 
