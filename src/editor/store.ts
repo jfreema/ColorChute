@@ -4,7 +4,7 @@ import { DEFAULT_DPI } from '../lib/printSpecs'
 import { ctx2d, Layer, makeCanvas, makeLayer, newId, readPixels } from './doc'
 import { DocState, History } from './history'
 import {
-  contentBounds, cropPixels, Mask, paintMask, Rect, regionAt, replaceColor, resizeNearest, strokeLine, unionRect,
+  contentBounds, cropPixels, Mask, paintMask, Rect, regionAt, replaceInk, resizeNearest, strokeLine, unionRect,
 } from './pixels'
 import { combine, cropMask, growMask, invertMask, isEmpty, maskBounds, rectMask, SelectMode, shrinkMask } from './selection'
 
@@ -385,13 +385,18 @@ export class Editor {
    * Swaps one color for another on every layer, for trying color schemes. Uses the tolerance setting so slightly
    * off pixels from a scan or JPEG come along.
    */
-  replaceEverywhere(fromHex: string, toHex: string) {
+  /**
+   * Changes one ink to another on every layer. `inks` are all the design's inks, so only pixels of this one move,
+   * whatever the fill tolerance is set to.
+   */
+  replaceEverywhere(fromHex: string, toHex: string, inks: string[] = []) {
     const from = hexToRgba(fromHex), to = hexToRgba(toHex)
+    const others = inks.map(hexToRgba)
     let n = 0
     this.edit('Swap color', this.state.layers.map((l) => l.id), () => {
       for (const l of this.state.layers) {
         const img = readPixels(l.canvas)
-        const changed = replaceColor(img, from, to, Math.max(this.tol, 8), this.state.selection)
+        const changed = replaceInk(img, from, others, to, this.state.selection)
         if (changed) ctx2d(l.canvas).putImageData(img, 0, 0)
         n += changed
       }

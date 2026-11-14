@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
-  contentBounds, cropPixels, diffBounds, dominantColors, makePixels, paintMask, regionAt, replaceColor,
+  contentBounds, cropPixels, diffBounds, dominantColors, makePixels, paintMask, regionAt, replaceColor, replaceInk,
   resizeNearest, strokeLine, Pixels,
 } from '../editor/pixels'
 import { RGBA } from '../lib/color'
@@ -60,6 +60,15 @@ describe('paint and replace', () => {
     px.data.set([200, 0, 0, 128, 0, 200, 0, 255])
     expect(replaceColor(px, RED, BLUE, 0, null)).toBe(1)
     expect([...px.data]).toEqual([0, 0, 200, 128, 0, 200, 0, 255])
+  })
+
+  it('swaps one ink and leaves similar inks alone', () => {
+    // Linen, Creamsicle and Black, as in Battle Baseball, plus a slightly-off Linen pixel
+    const LINEN: RGBA = [0xe6, 0xda, 0xbf, 255], CREAM: RGBA = [0xff, 0xa0, 0x6a, 255], BLACK: RGBA = [0, 0, 0, 255]
+    const px = makePixels(4, 1)
+    px.data.set([...LINEN, ...CREAM, ...BLACK, 0xe2, 0xd6, 0xbb, 255])
+    expect(replaceInk(px, LINEN, [LINEN, CREAM, BLACK], BLUE, null)).toBe(2)
+    expect([...px.data]).toEqual([...BLUE, ...CREAM, ...BLACK, ...BLUE])
   })
 
   it('strokes without gaps', () => {

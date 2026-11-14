@@ -166,7 +166,7 @@ function InksPanel() {
                     <>
                       {' · '}
                       <button className="link-btn" title={`Not one of Epic's colors. Change it to ${near.swatch.name} on every layer.`}
-                        onClick={() => editor.replaceEverywhere(ink.hex, near.swatch.hex)}>
+                        onClick={() => editor.replaceEverywhere(ink.hex, near.swatch.hex, inks.map((k) => k.hex))}>
                         Use {near.swatch.name}
                       </button>
                     </>
@@ -177,8 +177,8 @@ function InksPanel() {
             <button
               className="btn small"
               disabled={ink.hex === primary}
-              title={`Change every ${ink.hex} on every layer to the fill color`}
-              onClick={() => editor.replaceEverywhere(ink.hex, primary)}
+              title={`Change this ink, and only this ink, to the fill color on every layer`}
+              onClick={() => editor.replaceEverywhere(ink.hex, primary, inks.map((k) => k.hex))}
             >
               Swap to <span className="swatch" style={{ width: 14, height: 14, borderRadius: 4, background: primary }} />
             </button>
