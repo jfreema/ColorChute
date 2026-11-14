@@ -25,7 +25,8 @@ export function AccountDialog() {
           computer.
         </p>
         <p className="dialog-text">
-          Sign in with Google. New accounts are approved by the ColorChute admin before they can save.
+          Sign in with Google. New accounts are approved by the ColorChute admin before they can save.{' '}
+          <a href="/privacy" target="_blank" rel="noreferrer">What we keep</a>
         </p>
       </Dialog>
     )

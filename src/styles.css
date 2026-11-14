@@ -532,6 +532,7 @@ select.field.small { height: 26px; padding: 0 4px; font-size: 12px; max-width: 1
 .dialog .foot { display: flex; gap: 8px; justify-content: flex-end; align-items: center; margin-top: 14px; }
 .dialog .foot .hint { color: #fff; opacity: 0.85; }
 .dialog-text { color: #fff; font-weight: 700; line-height: 1.45; margin: 6px 2px 10px; }
+.dialog-text a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
 .preset {
   display: flex;
   align-items: center;
