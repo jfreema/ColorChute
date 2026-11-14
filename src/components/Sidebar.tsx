@@ -5,7 +5,8 @@ import { ColorCount } from '../editor/pixels'
 import { editor, useEditor } from '../editor/store'
 import { isHex, normalizeHex } from '../lib/color'
 import {
-  BOARD_COLORS, EPIC_COLORS, EPIC_MATCH, epicColorName, nearestEpicColor, SHIRT_COLLECTIONS, shirtCollection, shirtColorName,
+  BOARD_COLORS, EPIC_MATCH, epicColorName, INK_COLLECTIONS, inkCollection, inkColorName, nearestEpicColor, SHIRT_COLLECTIONS,
+  shirtCollection, shirtColorName,
 } from '../lib/palettes'
 import { EPIC } from '../lib/printSpecs'
 import { ColorInput } from './ColorInput'
@@ -24,11 +25,39 @@ export function Sidebar({ onPlaceImage }: { onPlaceImage: () => void }) {
 
 // MARK: Colors
 
+const INKS_KEY = 'colorchute.inkCollection'
+
+/** The print color group picked in the palette, remembered in this browser */
+function useInkCollection() {
+  const [id, setId] = useState(() => {
+    try {
+      return localStorage.getItem(INKS_KEY) ?? 'epic'
+    } catch {
+      return 'epic'
+    }
+  })
+  const choose = (next: string) => {
+    setId(next)
+    try {
+      localStorage.setItem(INKS_KEY, next)
+    } catch {
+      // Private windows can refuse storage; the choice just won't stick
+    }
+  }
+  return [inkCollection(id), choose] as const
+}
+
 function ColorsPanel() {
   const primary = useEditor((s) => s.primary)
   const recent = useEditor((s) => s.recent)
   const [text, setText] = useState(primary)
+  const [collection, setCollection] = useInkCollection()
   useEffect(() => setText(primary), [primary])
+  const named = inkColorName(primary, collection.id)
+  const epicName = epicColorName(primary)
+  const title = named
+    ? `${named.name}${named.collection !== collection ? ` (${named.collection.name})` : ''}`
+    : collection.id === 'epic' ? 'Custom, not an Epic color' : 'Custom color'
   return (
     <>
       <div className="section-label">Fill color</div>
@@ -36,31 +65,43 @@ function ColorsPanel() {
         <div className="card-row row">
           <ColorInput className="swatch big-swatch" value={primary} onChange={(c) => editor.setPrimary(c)} title="Pick any color" />
           <div className="grow">
-            <div style={{ fontWeight: 900, fontSize: 15 }}>{epicColorName(primary) ?? 'Custom, not an Epic color'}</div>
-            <input
-              className="field"
-              style={{ width: 100, marginTop: 4 }}
-              value={text}
-              aria-label="Hex color"
-              onChange={(e) => {
-                setText(e.target.value)
-                if (isHex(e.target.value)) editor.setPrimary(e.target.value)
-              }}
-              onBlur={() => setText(primary)}
-            />
+            <div style={{ fontWeight: 900, fontSize: 15 }}>{title}</div>
+            <div className="row tight" style={{ marginTop: 4, flexWrap: 'nowrap' }}>
+              <input
+                className="field"
+                style={{ width: 100, flex: 'none' }}
+                value={text}
+                aria-label="Hex color"
+                onChange={(e) => {
+                  setText(e.target.value)
+                  if (isHex(e.target.value)) editor.setPrimary(e.target.value)
+                }}
+                onBlur={() => setText(primary)}
+              />
+              {/* Says whether Epic can print it, unless the name above already does */}
+              {named?.collection.id !== 'epic' && (named || collection.id !== 'epic') && (
+                <span className="hint" title="Epic Sports prints the shirts, so its colors are the safe choice">
+                  {epicName ? `Epic: ${epicName}` : 'Not an Epic color'}
+                </span>
+              )}
+            </div>
           </div>
         </div>
         <div className="card-row">
-          <div className="row" style={{ marginBottom: 8 }}>
-            <b>Epic colors</b>
-            <span className="hint">The 40 colors Epic prints</span>
+          <div className="row tight" style={{ marginBottom: 8 }}>
+            <b className="grow">Print colors</b>
+            <select className="field small" value={collection.id} title={collection.about} aria-label="Print colors from"
+              onChange={(e) => setCollection(e.target.value)}>
+              {INK_COLLECTIONS.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
           </div>
           <div className="swatch-grid">
-            {EPIC_COLORS.map((c) => (
+            {collection.colors.map((c) => (
               <button key={c.hex} className={`swatch ${c.hex === primary ? 'selected' : ''}`} style={{ background: c.hex }}
                 title={`${c.name} ${c.hex}`} aria-label={c.name} onClick={() => editor.setPrimary(c.hex)} />
             ))}
           </div>
+          <div className="hint" style={{ marginTop: 6 }}>{collection.about}</div>
         </div>
         {recent.length > 0 && (
           <div className="card-row tinted">

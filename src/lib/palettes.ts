@@ -52,6 +52,109 @@ export const EPIC_COLORS: Swatch[] = [
   { name: 'Brown', hex: '#623B2A' },
 ]
 
+/**
+ * Common screen print ink colors, from the stock colors print shops usually carry. Hex values are the usual screen
+ * versions of the Pantone color each one is matched to, noted beside it.
+ */
+export const COMMON_INKS: Swatch[] = [
+  { name: 'Black', hex: '#000000' },
+  { name: 'Charcoal', hex: '#333F48' }, // 432 C
+  { name: 'Gray', hex: '#888B8D' }, // Cool Gray 8 C
+  { name: 'Light Gray', hex: '#C8C9C7' }, // Cool Gray 3 C
+  { name: 'Cream', hex: '#F1E6B2' }, // 7499 C
+  { name: 'White', hex: '#FFFFFF' },
+  { name: 'Scarlet', hex: '#E4002B' }, // 185 C
+  { name: 'Red', hex: '#C8102E' }, // 186 C
+  { name: 'Cardinal', hex: '#9D2235' }, // 201 C
+  { name: 'Maroon', hex: '#862633' }, // 202 C
+  { name: 'Burgundy', hex: '#651D32' }, // 7421 C
+  { name: 'Coral', hex: '#FF585D' }, // 178 C
+  { name: 'Pink', hex: '#F8A3BC' }, // 189 C
+  { name: 'Hot Pink', hex: '#E10098' }, // Rhodamine Red C
+  { name: 'Lavender', hex: '#C1A7E2' }, // 264 C
+  { name: 'Purple', hex: '#582C83' }, // 268 C
+  { name: 'Navy', hex: '#041E42' }, // 282 C
+  { name: 'Royal Blue', hex: '#0033A0' }, // 286 C
+  { name: 'Sky Blue', hex: '#00A3E0' }, // 299 C
+  { name: 'Columbia Blue', hex: '#8BB8E8' }, // 278 C
+  { name: 'Turquoise', hex: '#00A9CE' }, // 312 C
+  { name: 'Teal', hex: '#00737A' }, // 322 C
+  { name: 'Mint', hex: '#6ECEB2' }, // 338 C
+  { name: 'Lime', hex: '#97D700' }, // 375 C
+  { name: 'Kelly Green', hex: '#009A44' }, // 347 C
+  { name: 'Forest Green', hex: '#154734' }, // 3435 C
+  { name: 'Olive', hex: '#5B6236' },
+  { name: 'Orange', hex: '#FF6720' }, // 165 C
+  { name: 'Texas Orange', hex: '#CB6015' }, // 159 C
+  { name: 'Burnt Orange', hex: '#A9431E' }, // 1675 C
+  { name: 'Athletic Gold', hex: '#FFB81C' }, // 1235 C
+  { name: 'Yellow', hex: '#FFCD00' }, // 116 C
+  { name: 'Lemon Yellow', hex: '#FCE300' }, // 102 C
+  { name: 'Maize', hex: '#F1C400' }, // 7406 C
+  { name: 'Old Gold', hex: '#B58500' }, // 125 C
+  { name: 'Vegas Gold', hex: '#B9975B' }, // 465 C
+  { name: 'Tan', hex: '#A89968' }, // 7503 C
+  { name: 'Brown', hex: '#4E3629' }, // 476 C
+  { name: 'Neon Yellow', hex: '#FFE600' }, // 803 C
+  { name: 'Neon Green', hex: '#44D62C' }, // 802 C
+  { name: 'Neon Orange', hex: '#FFAA4D' }, // 804 C
+  { name: 'Neon Pink', hex: '#FF3EB5' }, // 806 C
+]
+
+/**
+ * Ninja Transfers' screen print ink colors, from the Ink Color choices and swatches on their 3D Puff Transfers page
+ * (ninjatransfers.com/products/3d-puff-transfers, Nov 14, 2026). Their DTF transfers print any color.
+ */
+export const NINJA_INKS: Swatch[] = [
+  { name: 'White', hex: '#FFFFFF' },
+  { name: 'Black', hex: '#000000' },
+  { name: 'Red', hex: '#890C19' },
+  { name: 'Orange', hex: '#CD3912' },
+  { name: 'Gold', hex: '#EC9000' },
+  { name: 'Yellow', hex: '#F2C105' },
+  { name: 'Green', hex: '#477F06' },
+  { name: 'Sea Glass', hex: '#498A78' },
+  { name: 'Mint', hex: '#85E8C4' },
+  { name: 'Blue', hex: '#0D547E' },
+  { name: 'Sky Blue', hex: '#119BBA' },
+  { name: 'Denim', hex: '#1F5A78' },
+  { name: 'Purple', hex: '#412D61' },
+  { name: 'Lavender', hex: '#9567AF' },
+  { name: 'Pink', hex: '#CC2159' },
+  { name: 'Bubble Gum', hex: '#FD637E' },
+  { name: 'Coral', hex: '#F3A263' },
+  { name: 'Tan', hex: '#B18F56' },
+]
+
+export interface InkCollection {
+  id: string
+  name: string
+  /** Where the colors come from, shown under the swatches */
+  about: string
+  colors: Swatch[]
+}
+
+/** Print color groups for the fill color palette. Epic Sports is first because Epic prints the shirts. */
+export const INK_COLLECTIONS: InkCollection[] = [
+  { id: 'epic', name: 'Epic Sports', about: 'The 40 colors Epic prints', colors: EPIC_COLORS },
+  { id: 'common', name: 'Common colors', about: 'Stock ink colors most print shops carry', colors: COMMON_INKS },
+  { id: 'ninja', name: 'Ninja Transfers', about: 'Ninja’s screen print ink colors', colors: NINJA_INKS },
+]
+
+export function inkCollection(id: string | undefined): InkCollection {
+  return INK_COLLECTIONS.find((c) => c.id === id) ?? INK_COLLECTIONS[0]
+}
+
+/** A print color's name, looking in the chosen group first */
+export function inkColorName(hex: string, collectionId?: string): { name: string; collection: InkCollection } | undefined {
+  const first = inkCollection(collectionId)
+  for (const collection of [first, ...INK_COLLECTIONS.filter((c) => c !== first)]) {
+    const s = collection.colors.find((c) => deltaE(c.hex, hex) < EPIC_MATCH)
+    if (s) return { name: s.name, collection }
+  }
+  return undefined
+}
+
 /** Common blank shirt colors for the preview */
 export const SHIRT_COLORS: Swatch[] = [
   { name: 'Military Green', hex: '#4B5320' },
