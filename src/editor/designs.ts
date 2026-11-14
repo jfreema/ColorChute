@@ -4,7 +4,7 @@ import { ctx2d, Layer, makeCanvas, newId } from './doc'
 import { readPixels } from './doc'
 import { epicColorName } from '../lib/palettes'
 import { inkColors } from './checks'
-import { dominantColors } from './pixels'
+import { contentBounds, dominantColors } from './pixels'
 import { cloudStore, DesignStore, DesignSummary, localStore, urlFor } from './storage'
 import { editor } from './store'
 
@@ -78,13 +78,30 @@ export const getDesigns = () => state
 export const toBlob = (c: HTMLCanvasElement, type = 'image/png') =>
   new Promise<Blob>((res, rej) => c.toBlob((b) => (b ? res(b) : rej(new Error('Could not encode image'))), type))
 
-/** A small PNG of the art, at most 240 px on its long side */
+/**
+ * A small PNG of the art, at most 240 px on its long side. It's cropped to the art with a little room around it, so a
+ * small design on a big 11 × 11 in canvas still fills its card.
+ */
 export function thumbnailOf(src: HTMLCanvasElement): Promise<Blob> {
-  const s = Math.min(1, 240 / Math.max(src.width, src.height))
-  const c = makeCanvas(Math.max(1, Math.round(src.width * s)), Math.max(1, Math.round(src.height * s)))
+  // Find the art on a small copy; reading every pixel of a full-size canvas is slow on phones
+  const k = Math.min(1, 600 / Math.max(src.width, src.height))
+  const probe = makeCanvas(Math.max(1, Math.round(src.width * k)), Math.max(1, Math.round(src.height * k)))
+  ctx2d(probe).drawImage(src, 0, 0, probe.width, probe.height)
+  const box = contentBounds(readPixels(probe))
+  probe.width = 0
+  let sx = 0, sy = 0, sw = src.width, sh = src.height
+  if (box) {
+    const pad = Math.round(Math.max(box.w, box.h) * 0.04) + 1
+    sx = Math.max(0, Math.floor((box.x - pad) / k))
+    sy = Math.max(0, Math.floor((box.y - pad) / k))
+    sw = Math.min(src.width, Math.ceil((box.x + box.w + pad) / k)) - sx
+    sh = Math.min(src.height, Math.ceil((box.y + box.h + pad) / k)) - sy
+  }
+  const s = Math.min(1, 240 / Math.max(sw, sh))
+  const c = makeCanvas(Math.max(1, Math.round(sw * s)), Math.max(1, Math.round(sh * s)))
   const g = ctx2d(c)
   g.imageSmoothingQuality = 'high'
-  g.drawImage(src, 0, 0, c.width, c.height)
+  g.drawImage(src, sx, sy, sw, sh, 0, 0, c.width, c.height)
   return toBlob(c)
 }
 

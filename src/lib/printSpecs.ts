@@ -14,6 +14,12 @@ export const EPIC = {
   inkMinShare: 0.005,
 }
 
+/**
+ * Every shirt design's canvas: 11 × 11 in at 300 DPI, Epic's whole chest print area (Jared, Nov 14, 2026). The preview
+ * puts its top edge at the top of the print area. Art can be smaller than the canvas, since exports trim to the art.
+ */
+export const SHIRT_CANVAS = { width: 3300, height: 3300, dpi: 300 }
+
 export interface CanvasPreset {
   id: string
   name: string
@@ -24,10 +30,7 @@ export interface CanvasPreset {
 }
 
 export const CANVAS_PRESETS: CanvasPreset[] = [
-  { id: 'chest', name: 'Chest standard', use: 'Most front designs, 9 in', width: 2700, height: 2700, dpi: 300 },
-  { id: 'compact', name: 'Compact', use: 'Smaller marks, youth shirts, 7.5 in', width: 2250, height: 2250, dpi: 300 },
-  { id: 'wide', name: 'Wide', use: 'Long wordmarks, 10 in', width: 3000, height: 1500, dpi: 300 },
-  { id: 'max', name: 'Max', use: "Epic's ceiling, 11 × 11 in", width: 3300, height: 3300, dpi: 300 },
+  { id: 'shirt', name: 'T-shirt', use: "Epic's full chest print area. Exports trim to the art.", ...SHIRT_CANVAS },
   { id: 'logo', name: 'Primary logo', use: 'OTC Sports team page, 1600 px wide', width: 1600, height: 800, dpi: 72 },
   { id: 'icon', name: 'Square icon', use: '2D Sports and GameChanger, 600 × 600', width: 600, height: 600, dpi: 72 },
 ]

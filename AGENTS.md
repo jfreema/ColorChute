@@ -61,6 +61,10 @@ Fake values are fine: insert a user and a session (`token_hash` is the SHA-256 h
   in `samples.ts` when a mask in `public/samples/` changes, bump `SEEDED_KEY` so libraries get the new art, and put
   the new mask's signature at the front of `ART_HISTORY`.
   Samples people have saved over are migrated layer by layer (see `upgradeArt` and `ART_HISTORY`), never replaced.
+- **Shirt canvases are 11 × 11 in** (`SHIRT_CANVAS` in `printSpecs.ts`, 3300 × 3300 px), Jared's rule. The preview
+  puts the canvas top at the top of the print area and exports trim to the art, so art sits at the top of the canvas.
+  The sample masks are only as tall as their art and are drawn at the top; `growCanvas` moved older copies, in the
+  browser and in accounts, onto the full canvas.
 - **Epic's numbers live in `printSpecs.ts`** and come from the Shirt Image Spec and the Team Logo and Icon Spec in
   the Shirt Graphics project. Change them there.
 - **Commits are authored as Jared** (`Jared Freeman <143004867+jfreema@users.noreply.github.com>`) with no

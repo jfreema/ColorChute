@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from 'react'
 import { hexToRgba, normalizeHex, RGBA } from '../lib/color'
-import { DEFAULT_DPI } from '../lib/printSpecs'
+import { DEFAULT_DPI, SHIRT_CANVAS } from '../lib/printSpecs'
 import { ctx2d, Layer, makeCanvas, makeLayer, newId, readPixels } from './doc'
 import { DocState, History } from './history'
 import {
@@ -89,7 +89,7 @@ export class Editor {
 
   constructor() {
     const saved = loadSettings()
-    const w = 3600, h = 3600
+    const { width: w, height: h } = SHIRT_CANVAS
     const layer = makeLayer('Layer 1', w, h)
     this.state = {
       name: 'Untitled',

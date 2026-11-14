@@ -3,21 +3,26 @@ import { idb } from '../lib/idb'
 import { getAccount, markSamplesSeeded } from './account'
 import { ctx2d, makeCanvas } from './doc'
 import { ColorOption, Design, refreshLibrary, renderOption, thumbnailOf, toBlob } from './designs'
+import { SHIRT_CANVAS } from '../lib/printSpecs'
 import { cloudStore } from './storage'
 
 /**
  * Built-in sample designs, added to everyone's library on first run. Each layer ships as a white mask
  * (opaque or clear, no soft edges) and is tinted to its ink for each color option.
  */
-const SEEDED_KEY = 'colorchute.samples.v4'
+const SEEDED_KEY = 'colorchute.samples.v5'
 /**
  * Set by earlier versions: v1 used inks that aren't on Epic's wheel, v2 had a plain cannon instead of a bat, v3 had a
- * deeper drop shadow under BASEBALL
+ * deeper drop shadow under BASEBALL, v4 had a canvas only as tall as the art
  */
-const OLDER_KEYS = ['colorchute.samples.v1', 'colorchute.samples.v2', 'colorchute.samples.v3']
+const OLDER_KEYS = ['colorchute.samples.v1', 'colorchute.samples.v2', 'colorchute.samples.v3', 'colorchute.samples.v4']
 
-/** Set once the text-only Battle Baseball has been added */
-const TEXT_KEY = 'colorchute.samples.text.v1'
+/** Set once the text-only Battle Baseball has been added. v1 had a canvas only as tall as the art. */
+const TEXT_KEY = 'colorchute.samples.text.v2'
+const OLDER_TEXT_KEY = 'colorchute.samples.text.v1'
+
+/** Set per account once its samples in the cloud are on the 11 × 11 in canvas */
+const cloudCanvasKey = (userId: string) => `colorchute.samples.canvas11.${userId}`
 
 type Ink = 'outline' | 'battle' | 'tank' | 'baseball'
 
@@ -25,9 +30,12 @@ interface Sample {
   id: string
   name: string
   dir: string
+  /** The canvas, 11 × 11 in like every shirt design */
   width: number
   height: number
   dpi: number
+  /** The masks' height. They sit at the top of the canvas, which is the top of the shirt's print area. */
+  artHeight: number
   /** Bottom to top */
   layers: { id: string; name: string; ink: Ink }[]
   options: { id: string; name: string; shirt: string; inks: Partial<Record<Ink, string>> }[]
@@ -37,10 +45,9 @@ const BATTLE_BASEBALL: Sample = {
   id: 'sample-battle-baseball',
   name: 'Battle Baseball',
   dir: `${import.meta.env.BASE_URL}samples/battle-baseball/`,
-  // 11 × 8.41 in at 300 DPI, Epic's widest chest print
-  width: 3300,
-  height: 2524,
-  dpi: 300,
+  ...SHIRT_CANVAS,
+  // 11 × 8.41 in of art at 300 DPI, Epic's widest chest print
+  artHeight: 2524,
   layers: [
     { id: 'bb-outline', name: 'Outline', ink: 'outline' },
     { id: 'bb-baseball', name: 'BASEBALL', ink: 'baseball' },
@@ -69,10 +76,9 @@ const BATTLE_BASEBALL_TEXT: Sample = {
   id: 'sample-battle-baseball-text',
   name: 'Battle Baseball (text only)',
   dir: `${import.meta.env.BASE_URL}samples/battle-baseball-text/`,
-  // 11 × 4.54 in at 300 DPI
-  width: 3300,
-  height: 1363,
-  dpi: 300,
+  ...SHIRT_CANVAS,
+  // 11 × 4.54 in of art at 300 DPI
+  artHeight: 1363,
   layers: [
     { id: 'bt-outline', name: 'Outline', ink: 'outline' },
     { id: 'bt-baseball', name: 'BASEBALL', ink: 'baseball' },
@@ -128,6 +134,7 @@ async function buildSample(s: Sample, now = Date.now()): Promise<Design> {
     f.clearRect(0, 0, s.width, s.height)
     const layers: ColorOption['layers'] = []
     for (const [i, l] of s.layers.entries()) {
+      w.clearRect(0, 0, s.width, s.height)
       w.globalCompositeOperation = 'copy'
       w.drawImage(masks[i], 0, 0)
       w.globalCompositeOperation = 'source-in'
@@ -181,6 +188,38 @@ const ART_HISTORY: Record<string, { ink: Ink; sigs: string[] }> = {
 }
 
 /**
+ * Moves a sample's options that are still on the old canvas, only as tall as the art, onto the 11 × 11 in canvas. The
+ * art keeps its pixels and sits at the top, so it lands in the same place on the shirt. Other options are left alone.
+ * Returns whether anything changed.
+ */
+async function growCanvas(d: Design, s: Sample): Promise<boolean> {
+  const old = d.options.filter((o) => o.width === s.width && o.height === s.artHeight)
+  if (!old.length) return false
+  const work = makeCanvas(s.width, s.height)
+  const w = ctx2d(work)
+  try {
+    for (const o of old) {
+      for (const l of o.layers) {
+        const bmp = await createImageBitmap(l.png)
+        w.clearRect(0, 0, s.width, s.height)
+        w.drawImage(bmp, 0, 0)
+        bmp.close()
+        l.png = await toBlob(work)
+      }
+      o.height = s.height
+      // A new save time also gives the account's copy new image addresses, so no browser shows a cached old one
+      o.updatedAt = Date.now()
+      const art = await renderOption(o)
+      o.thumbnail = await thumbnailOf(art)
+      art.width = 0
+    }
+  } finally {
+    work.width = 0
+  }
+  return true
+}
+
+/**
  * Brings a sample someone has already saved over up to the current art, keeping their options, names and colors.
  * An option is redrawn only if each changed layer is still one of the shipped masks in one flat ink, so anything they
  * painted on stays exactly as it was.
@@ -202,6 +241,8 @@ async function upgradeArt(d: Design): Promise<Design | null> {
         const art = ART_HISTORY[l.id]
         if (!art) continue
         const bmp = await createImageBitmap(l.png)
+        w.globalCompositeOperation = 'source-over'
+        w.clearRect(0, 0, s.width, s.height)
         w.globalCompositeOperation = 'copy'
         w.drawImage(bmp, 0, 0)
         bmp.close()
@@ -236,6 +277,8 @@ async function upgradeArt(d: Design): Promise<Design | null> {
           mask = await loadMask(ink)
           masks.set(ink, mask)
         }
+        w.globalCompositeOperation = 'source-over'
+        w.clearRect(0, 0, s.width, s.height)
         w.globalCompositeOperation = 'copy'
         w.drawImage(mask, 0, 0)
         w.globalCompositeOperation = 'source-in'
@@ -275,18 +318,25 @@ async function seedAll() {
     const existing = await idb.get<Design>(BATTLE_BASEBALL.id)
     const deleted = !existing && OLDER_KEYS.some((k) => seeded(k))
     if (!deleted) {
-      if (!existing || untouched(existing)) await idb.put(await buildSample(BATTLE_BASEBALL))
+      if (!existing) await idb.put(await buildSample(BATTLE_BASEBALL))
+      // Rebuilt in place: same dates, so it keeps its spot in the library
+      else if (untouched(existing)) await idb.put(await buildSample(BATTLE_BASEBALL, existing.updatedAt))
       else {
         // If this fails (say, offline) it stays unmarked and tries again next visit
+        const grown = await growCanvas(existing, BATTLE_BASEBALL)
         const upgraded = await upgradeArt(existing)
-        if (upgraded) await idb.put(upgraded)
+        if (grown || upgraded) await idb.put(existing)
       }
     }
     markSeeded()
     added = true
   }
   if (!seeded(TEXT_KEY)) {
-    if (!(await idb.get<Design>(BATTLE_BASEBALL_TEXT.id))) {
+    const existing = await idb.get<Design>(BATTLE_BASEBALL_TEXT.id)
+    if (existing) {
+      if (untouched(existing)) await idb.put(await buildSample(BATTLE_BASEBALL_TEXT, existing.updatedAt))
+      else if (await growCanvas(existing, BATTLE_BASEBALL_TEXT)) await idb.put(existing)
+    } else if (!seeded(OLDER_TEXT_KEY)) {
       // Dated just before Battle Baseball, so it sits right after it in the library
       const bb = await idb.get<Design>(BATTLE_BASEBALL.id)
       await idb.put(await buildSample(BATTLE_BASEBALL_TEXT, (bb?.updatedAt ?? Date.now()) - 1))
@@ -308,6 +358,21 @@ async function seedAll() {
     }
     await api('/api/me/samples-seeded', { method: 'POST' })
     markSamplesSeeded()
+    markSeeded(cloudCanvasKey(u.id))
     await refreshLibrary()
+  }
+
+  // Samples an account got before shirt canvases were 11 × 11 in move onto the bigger canvas, saved-over ones too
+  if (u?.status === 'approved' && !seeded(cloudCanvasKey(u.id))) {
+    let grown = false
+    for (const s of [BATTLE_BASEBALL, BATTLE_BASEBALL_TEXT]) {
+      const d = await cloudStore.get(s.id)
+      if (d && (await growCanvas(d, s))) {
+        await cloudStore.put(d)
+        grown = true
+      }
+    }
+    markSeeded(cloudCanvasKey(u.id))
+    if (grown) await refreshLibrary()
   }
 }

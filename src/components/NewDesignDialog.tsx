@@ -1,16 +1,15 @@
 import { useState } from 'react'
 import { detachDesign } from '../editor/designs'
 import { editor } from '../editor/store'
-import { CANVAS_PRESETS, EPIC } from '../lib/printSpecs'
+import { CANVAS_PRESETS, EPIC, SHIRT_CANVAS } from '../lib/printSpecs'
 import { Dialog } from './Dialog'
 import { FilePlus } from './icons'
 
 export function NewDesignDialog({ onClose }: { onClose: () => void }) {
-  const [preset, setPreset] = useState('chest')
-  const p = CANVAS_PRESETS.find((x) => x.id === preset)
-  const [w, setW] = useState(2700)
-  const [h, setH] = useState(2700)
-  const [dpi, setDpi] = useState(300)
+  const [preset, setPreset] = useState('shirt')
+  const [w, setW] = useState(SHIRT_CANVAS.width)
+  const [h, setH] = useState(SHIRT_CANVAS.height)
+  const [dpi, setDpi] = useState(SHIRT_CANVAS.dpi)
   const [name, setName] = useState('')
   const pick = (id: string) => {
     const c = CANVAS_PRESETS.find((x) => x.id === id)!
@@ -71,7 +70,6 @@ export function NewDesignDialog({ onClose }: { onClose: () => void }) {
         <span className="hint">= {inch(w)} × {inch(h)} in</span>
       </div>
       {over && <p style={{ color: '#fff', fontWeight: 700 }}>Over Epic's 3300 px limit. Fine to work big, but trim or resize before export.</p>}
-      {!p && null}
     </Dialog>
   )
 }
