@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useDesigns } from '../editor/designs'
+import { renameOption, useDesigns } from '../editor/designs'
 import { editor, useEditor } from '../editor/store'
 import { ChevronDown, Download, FilePlus, FolderOpen, Library, Redo2, Save, Scaling, Undo2 } from './icons'
 import { Logo } from './Logo'
@@ -56,7 +56,9 @@ export function Header({ actions }: { actions: HeaderActions }) {
   const h = useEditor((s) => s.height)
   const dpi = useEditor((s) => s.dpi)
   const inch = (n: number) => (n / dpi).toFixed(2).replace(/\.?0+$/, '')
+  const optionId = useDesigns((s) => s.optionId)
   const optionName = useDesigns((s) => s.options.find((o) => o.id === s.optionId)?.name)
+  const [renaming, setRenaming] = useState(false)
   const mac = /Mac|iPhone|iPad/.test(navigator.platform)
   const mod = mac ? '⌘' : 'Ctrl+'
 
@@ -68,7 +70,24 @@ export function Header({ actions }: { actions: HeaderActions }) {
       <span className="title">ColorChute</span>
       <input className="name" value={name} aria-label="Design name" title="Design name"
         onChange={(e) => editor.setName(e.target.value)} />
-      {optionName && <span className="pill pass" style={{ background: 'var(--sky)' }}>{optionName}</span>}
+      {optionName && optionId && (renaming ? (
+        <input className="field option-name" autoFocus defaultValue={optionName} aria-label="Color option name"
+          onFocus={(e) => e.target.select()}
+          onBlur={(e) => {
+            const v = e.target.value.trim()
+            if (v && v !== optionName) renameOption(optionId, v)
+            setRenaming(false)
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
+            if (e.key === 'Escape') setRenaming(false)
+          }} />
+      ) : (
+        <button className="pill pill-btn" style={{ background: 'var(--sky)' }} onClick={() => setRenaming(true)}
+          title="Color option name. Click to rename it.">
+          {optionName}
+        </button>
+      ))}
       {dirty && <span className="dirty-dot" title="Unsaved changes" />}
       <button className="btn small" onClick={actions.resize} title={`Resize or change canvas size: ${w} × ${h} px, ${inch(w)} × ${inch(h)} in at ${dpi} DPI`}>
         <Scaling size={14} /> {w} × {h}

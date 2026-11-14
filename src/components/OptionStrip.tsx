@@ -1,10 +1,14 @@
 import { useState } from 'react'
-import { deleteOption, openOption, renameOption, saveAsNewOption, useDesigns } from '../editor/designs'
+import { deleteOption, openOption, renameOption, useDesigns } from '../editor/designs'
 import { useEditor } from '../editor/store'
-import { Plus, X } from './icons'
+import { Pencil, Plus, X } from './icons'
 
 /** The open design's saved color options, side by side, for comparing schemes */
-export function OptionStrip({ confirmDiscard }: { confirmDiscard: (then: () => void) => void }) {
+export function OptionStrip({ confirmDiscard, onSaveAsOption }: {
+  confirmDiscard: (then: () => void) => void
+  /** Asks for a name, then saves the current colors as a new option */
+  onSaveAsOption: () => void
+}) {
   const options = useDesigns((s) => s.options)
   const optionId = useDesigns((s) => s.optionId)
   const busy = useDesigns((s) => s.busy)
@@ -15,7 +19,7 @@ export function OptionStrip({ confirmDiscard }: { confirmDiscard: (then: () => v
   return (
     <div className="strip-row">
       <div className="strip-label"
-        title={options.length ? 'Click one to switch, double-click to rename' : 'Save the colors you have now, swap inks, then save another to compare'}>
+        title={options.length ? 'Click one to switch. Click the pencil, or the open one’s name, to rename it.' : 'Save the colors you have now, swap inks, then save another to compare'}>
         Color<br />options
       </div>
       <div className="strip">
@@ -44,15 +48,39 @@ export function OptionStrip({ confirmDiscard }: { confirmDiscard: (then: () => v
                     setRenaming(null)
                   }}
                   onKeyDown={(e) => {
+                    e.stopPropagation()
                     if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
                     if (e.key === 'Escape') setRenaming(null)
                   }}
                 />
               ) : (
-                <div className="nm" title={o.name}>{o.name}{o.id === optionId && dirty ? ' •' : ''}</div>
+                <div
+                  className={`nm ${o.id === optionId ? 'editable' : ''}`}
+                  title={o.id === optionId ? `${o.name} (click to rename)` : o.name}
+                  onClick={(e) => {
+                    if (o.id !== optionId) return
+                    e.stopPropagation()
+                    setRenaming(o.id)
+                  }}
+                >
+                  {o.name}{o.id === optionId && dirty ? ' •' : ''}
+                </div>
               )}
               <div className="dots">{o.swatches.slice(0, 6).map((c) => <span key={c} style={{ background: c }} />)}</div>
             </div>
+            {renaming !== o.id && (
+              <button
+                className="btn small icon ren"
+                title="Rename this option"
+                aria-label={`Rename ${o.name}`}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setRenaming(o.id)
+                }}
+              >
+                <Pencil size={12} />
+              </button>
+            )}
             {deleting === o.id ? (
               <button
                 className="btn small red x"
@@ -82,7 +110,7 @@ export function OptionStrip({ confirmDiscard }: { confirmDiscard: (then: () => v
             )}
           </div>
         ))}
-        <button className="card option-card add" disabled={busy} onClick={() => saveAsNewOption()}
+        <button className="card option-card add" disabled={busy} onClick={onSaveAsOption}
           title="Save the colors you have now as another option to compare">
           <Plus size={16} />
           {options.length ? 'Save as new option' : 'Save first option'}

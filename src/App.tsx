@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { ExportDialog } from './components/ExportDialog'
 import { Header } from './components/Header'
 import { LibraryDialog } from './components/LibraryDialog'
+import { NameOptionDialog } from './components/NameOptionDialog'
 import { NewDesignDialog } from './components/NewDesignDialog'
 import { OptionsBar } from './components/OptionsBar'
 import { OptionStrip } from './components/OptionStrip'
@@ -12,7 +13,7 @@ import { Toolbar, TOOLS } from './components/Toolbar'
 import { Dialog } from './components/Dialog'
 import { Save } from './components/icons'
 import { readPixels } from './editor/doc'
-import { detachDesign, getDesigns, refreshLibrary, save, saveAsNewOption } from './editor/designs'
+import { detachDesign, getDesigns, refreshLibrary, save } from './editor/designs'
 import { seedSamples } from './editor/samples'
 import { download } from './editor/exporting'
 import { contentBounds } from './editor/pixels'
@@ -20,7 +21,7 @@ import { editor, ProjectFile, useEditor } from './editor/store'
 import { slug } from './lib/printSpecs'
 import { readPngDpi } from './lib/png'
 
-type Modal = 'new' | 'resize' | 'export' | 'library' | null
+type Modal = 'new' | 'resize' | 'export' | 'library' | 'nameOption' | null
 
 function isTyping(e: KeyboardEvent) {
   const t = e.target as HTMLElement
@@ -125,7 +126,7 @@ export function App() {
     newDesign: () => confirmDiscard(() => setModal('new')),
     open: () => confirmDiscard(() => openInput.current?.click()),
     save: () => save(),
-    saveAsOption: () => saveAsNewOption(),
+    saveAsOption: () => setModal('nameOption'),
     saveFile,
     placeImage: () => placeInput.current?.click(),
     exportFile: () => setModal('export'),
@@ -214,7 +215,7 @@ export function App() {
         <section className="center">
           {!focus && <OptionsBar />}
           <Stage onDropFiles={addFiles} focus={focus} onToggleFocus={toggleFocus} />
-          {!focus && <OptionStrip confirmDiscard={confirmDiscard} />}
+          {!focus && <OptionStrip confirmDiscard={confirmDiscard} onSaveAsOption={actions.saveAsOption} />}
         </section>
         {!focus && <Sidebar onPlaceImage={actions.placeImage} />}
       </main>
@@ -235,6 +236,7 @@ export function App() {
       {modal === 'resize' && <ResizeDialog onClose={close} />}
       {modal === 'export' && <ExportDialog onClose={close} />}
       {modal === 'library' && <LibraryDialog onClose={close} confirmDiscard={confirmDiscard} />}
+      {modal === 'nameOption' && <NameOptionDialog onClose={close} />}
       {pending && (
         <Dialog
           title="Save changes first?"

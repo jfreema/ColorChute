@@ -2,6 +2,8 @@ import { useSyncExternalStore } from 'react'
 import { idb, persistStorage } from '../lib/idb'
 import { ctx2d, Layer, makeCanvas, newId } from './doc'
 import { readPixels } from './doc'
+import { epicColorName } from '../lib/palettes'
+import { inkColors } from './checks'
 import { dominantColors } from './pixels'
 import { editor } from './store'
 
@@ -177,6 +179,28 @@ export function save(designName?: string) {
     editor.toast(`Saved ${option.name}`)
     refreshLibrary()
   })
+}
+
+/**
+ * A name for a new color option from its inks, like "Black, Linen & Creamsicle", or "Option 5" when an ink isn't
+ * one of Epic's colors
+ */
+export function suggestOptionName(): string {
+  const fallback = `Option ${state.options.length + 1}`
+  const src = editor.composite()
+  // Downsample without smoothing, so no in-between colors appear
+  const k = Math.min(1, 500 / Math.max(src.width, src.height))
+  const c = makeCanvas(Math.max(1, Math.round(src.width * k)), Math.max(1, Math.round(src.height * k)))
+  const g = ctx2d(c)
+  g.imageSmoothingEnabled = false
+  g.drawImage(src, 0, 0, c.width, c.height)
+  const names = inkColors(readPixels(c)).map((ink) => epicColorName(ink.hex))
+  if (!names.length || names.length > 4 || names.some((n) => !n)) return fallback
+  const base = names.length === 1 ? names[0]! : `${names.slice(0, -1).join(', ')} & ${names[names.length - 1]}`
+  const taken = new Set(state.options.map((o) => o.name.toLowerCase()))
+  let name = base
+  for (let i = 2; taken.has(name.toLowerCase()); i++) name = `${base} ${i}`
+  return name
 }
 
 /** Saves the current colors as another option of the open design */
