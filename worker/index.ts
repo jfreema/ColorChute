@@ -3,7 +3,8 @@
  * designs. Accounts, sessions and designs live in one D1 database (free plan). Layer images are stored as PNG
  * blobs in D1, split into 1 MB chunks because a D1 value tops out at 2 MB.
  *
- * Secrets, set in the Cloudflare dashboard (Worker → Settings → Variables and Secrets):
+ * Secrets, set in the Cloudflare dashboard (Worker → Settings → Variables and Secrets) with type Secret, which deploys
+ * never touch (plain-text ones were once deleted by a deploy; `keep_vars` in wrangler.toml now guards those too):
  *   GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET  the Google OAuth web client
  *   ADMIN_EMAILS                            comma-separated Google addresses that are always approved admins
  */
