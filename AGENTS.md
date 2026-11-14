@@ -31,8 +31,8 @@ Fake values are fine: insert a user and a session (`token_hash` is the SHA-256 h
 |---|---|
 | Pure pixel code, unit tested | `src/editor/pixels.ts` (flood fill, paint, replace color, resize, colors), `selection.ts` (masks, grow, shrink, outline), `checks.ts` (Epic checks, order note), `src/lib/png.ts` (DPI chunk), `zip.ts` |
 | Editor state | `src/editor/store.ts` (`Editor`: document, tools, actions; `useEditor` hook), `history.ts` (undo), `doc.ts` (layers) |
-| Saved designs | `src/editor/designs.ts` (library, color options), `storage.ts` (the account on the server, public designs, and old IndexedDB copies), `src/lib/idb.ts` |
-| Accounts | `src/editor/account.ts` (sign-in pop-up, who can edit), `worker/index.ts` (the API: Google OAuth, sessions, approvals, designs and public designs in D1) |
+| Saved designs | `src/editor/designs.ts` (library, color options), `storage.ts` (the account on the server, public and shared designs, and old IndexedDB copies), `links.ts` (share link addresses), `src/lib/idb.ts` |
+| Accounts | `src/editor/account.ts` (sign-in pop-up, who can edit), `worker/index.ts` (the API: Google OAuth, sessions, approvals, designs, public designs and share links in D1) |
 | Export | `src/editor/exporting.ts` (presets, mockup, Epic package) |
 | Specs and palettes | `src/lib/printSpecs.ts`, `src/lib/palettes.ts`, `src/lib/shirt.ts` (shirt SVGs) |
 | UI | `src/App.tsx` (shortcuts, files), `src/components/*`, `src/styles.css` |
@@ -48,6 +48,13 @@ Fake values are fine: insert a user and a session (`token_hash` is the SHA-256 h
   `public_designs` table, under a random id so the owner's account id stays out of public addresses. Anyone can list
   them and load their images (`/api/public/...`). Opening one that isn't yours and saving makes your own copy with all
   its options (`mine()` in `designs.ts`). These replaced the old built-in samples that were copied into every library.
+- **Share links open one design for anyone** (Jared, 2026-11-14). An approved account's Share button makes a
+  `share_links` row with a long random token; `/s/<token>` opens that design view-only, public or not, until the
+  owner turns the link off (sharing again makes a new token). Public designs pass along `/p/<id>`. The query keeps
+  how the sender was looking: `option`, `bg`, `shirt`/`square`, `behind`, `print` and `view` (`src/editor/links.ts`).
+  `view` is the part of the scene that was on screen, in document pixels, not a zoom percent, so it frames the same
+  art on a phone or a big monitor. `/s/*` and `/p/*` run the Worker first only to add link-preview tags to
+  index.html; the app reads the link itself. Opening your own share link opens it as yours.
 - **Dashboard variables need `keep_vars`.** The Google values were once plain-text variables and a deploy deleted
   them, which turned sign-in off. Keep `keep_vars = true` in `wrangler.toml`, and add these as type Secret.
 - **Sign-in runs in a pop-up** so unsaved canvases survive it. The callback page tells the editor over a

@@ -3,7 +3,9 @@ import { signIn, signOut, showPrompt, useAccount } from '../editor/account'
 import { renameOption, useDesigns } from '../editor/designs'
 import { editor, useEditor } from '../editor/store'
 import { Avatar } from './Avatar'
-import { ChevronDown, Download, Eye, FilePlus, FolderOpen, Library, LogIn, LogOut, Redo2, Save, Scaling, ShieldCheck, Undo2 } from './icons'
+import {
+  ChevronDown, Download, Eye, FilePlus, FolderOpen, Library, LogIn, LogOut, Redo2, Save, Scaling, Share2, ShieldCheck, Undo2,
+} from './icons'
 import { Logo } from './Logo'
 
 export interface HeaderActions {
@@ -17,6 +19,7 @@ export interface HeaderActions {
   exportFile: () => void
   resize: () => void
   admin: () => void
+  share: () => void
 }
 
 /** Closes a pop-up menu when you click anywhere outside it */
@@ -120,6 +123,7 @@ function Menu({ items }: { items: { label: string; hint?: string; onClick: () =>
 function ViewOnlyHeader({ actions }: { actions: HeaderActions }) {
   const name = useEditor((s) => s.name)
   const optionName = useDesigns((s) => s.options.find((o) => o.id === s.optionId)?.name)
+  const open = useDesigns((s) => !!s.designId)
   const user = useAccount((s) => s.user)
   return (
     <header className="header">
@@ -143,6 +147,11 @@ function ViewOnlyHeader({ actions }: { actions: HeaderActions }) {
       <button className="btn green" onClick={actions.library} title="Public designs anyone can look at">
         <Library size={15} /> Designs
       </button>
+      {open && (
+        <button className="btn" onClick={actions.share} title="Get a link to this design to send to someone">
+          <Share2 size={15} /> Share
+        </button>
+      )}
       <Account onAdmin={actions.admin} />
     </header>
   )
@@ -228,6 +237,9 @@ function EditHeader({ actions }: { actions: HeaderActions }) {
           { label: 'Download project file', hint: '.colorchute', onClick: actions.saveFile },
         ]}
       />
+      <button className="btn" onClick={actions.share} title="Get a view-only link to this design to send to someone">
+        <Share2 size={15} /> Share
+      </button>
       <button className="btn yellow" onClick={actions.exportFile} title={`Export (${mod}E)`}>
         <Download size={15} /> Export
       </button>

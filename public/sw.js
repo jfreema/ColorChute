@@ -18,7 +18,8 @@ self.addEventListener('fetch', (e) => {
     e.respondWith(
       fetch(req)
         .then((res) => {
-          if (res.ok && res.type === 'basic') {
+          // Only the plain page is kept for offline use; share links carry one design's preview tags
+          if (res.ok && res.type === 'basic' && url.pathname === '/') {
             const copy = res.clone()
             caches.open(CACHE).then((c) => c.put('/', copy))
           }

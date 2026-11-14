@@ -5,7 +5,10 @@ import { readPixels } from './doc'
 import { epicColorName } from '../lib/palettes'
 import { inkColors } from './checks'
 import { contentBounds, dominantColors } from './pixels'
-import { cloudStore, DesignSummary, localStore, publicStore, setDesignPublic, urlFor } from './storage'
+import { DesignLink, leaveLink } from './links'
+import {
+  cloudStore, createShareLink, DesignSummary, localStore, publicStore, setDesignPublic, sharedStore, stopSharing, urlFor,
+} from './storage'
 import { editor } from './store'
 
 /** One saved color scheme of a design: all its layers as they were */
@@ -33,14 +36,19 @@ export interface Design {
   options: ColorOption[]
 }
 
+export type OpenFrom = 'mine' | 'public' | 'shared'
+
 /** The design and option the editor has open, and summaries for the color option strip */
 export interface DesignsState {
   designId: string | null
   optionId: string | null
   designName: string
   options: { id: string; name: string; swatches: string[]; thumb: string; shirt?: string }[]
-  /** Whether the open design is one of mine or a public one. Saving a public one saves my own copy. */
-  openFrom: 'mine' | 'public'
+  /**
+   * Whether the open design is one of mine, a public one, or one opened from someone's share link. Saving a public or
+   * shared one saves my own copy.
+   */
+  openFrom: OpenFrom
   /** My designs, for approved accounts */
   library: DesignSummary[]
   /** Designs an admin made public, which everyone sees */
@@ -152,6 +160,7 @@ function summarize(d: Design) {
 async function current(): Promise<Design | undefined> {
   if (!state.designId) return undefined
   if (state.openFrom === 'public') return publicStore.get(state.designId)
+  if (state.openFrom === 'shared') return sharedStore.get(state.designId)
   if (!canSave()) return undefined
   return (await cloudStore.get(state.designId)) ?? localStore.get(state.designId)
 }
@@ -166,6 +175,8 @@ async function mine(): Promise<Design | undefined> {
 
 /** After saving: the design that was saved is now the open one, and it's mine */
 function saved(d: Design) {
+  // A copy of someone else's design isn't what the link in the address bar shows anymore
+  if (state.openFrom !== 'mine') leaveLink()
   set({ openFrom: 'mine' })
   summarize(d)
 }
@@ -281,16 +292,69 @@ export function openOption(optionId: string) {
   })
 }
 
+/** Loads a design into the editor, on the given option or its first. False when it's gone. */
+async function load(designId: string, from: OpenFrom, optionId?: string): Promise<boolean> {
+  const d = from === 'public' ? await publicStore.get(designId)
+    : from === 'shared' ? await sharedStore.get(designId)
+      : await cloudStore.get(designId)
+  if (!d || !d.options.length) return false
+  const o = d.options.find((x) => x.id === optionId) ?? d.options[0]
+  editor.showAllInks()
+  await loadOption(o)
+  set({ optionId: o.id, openFrom: from })
+  summarize(d)
+  editor.markSaved(d.name)
+  return true
+}
+
 /** Opens one of my designs, or a public one */
 export function openDesign(designId: string, from: 'mine' | 'public' = 'mine') {
   return busy(async () => {
-    const d = from === 'public' ? await publicStore.get(designId) : await cloudStore.get(designId)
-    if (!d || !d.options.length) return
-    editor.showAllInks()
-    await loadOption(d.options[0])
-    set({ optionId: d.options[0].id, openFrom: from })
-    summarize(d)
-    editor.markSaved(d.name)
+    if (await load(designId, from)) leaveLink()
+  })
+}
+
+/**
+ * Opens the design a link points to, the way its sender was looking at it: same option, background and zoom. Its
+ * owner gets it as their own design, ready to edit. False, after saying why, when the link doesn't work.
+ */
+export async function openLink(link: DesignLink): Promise<boolean> {
+  const ok = await busy(async () => {
+    let id = link.id
+    let from: OpenFrom = link.kind === 's' ? 'shared' : 'public'
+    if (link.kind === 's') {
+      const m = await sharedStore.meta(link.id)
+      if (!m) throw new Error('This share link doesn’t work anymore. Whoever shared it may have turned it off.')
+      if (m.mine && m.designId && canSave()) [id, from] = [m.designId, 'mine']
+    } else {
+      const s = state.publicLibrary.find((d) => d.id === link.id)
+      if (s?.mine && s.designId && canSave()) [id, from] = [s.designId, 'mine']
+    }
+    if (!(await load(id, from, link.option))) throw new Error('That design isn’t available anymore.')
+    editor.setPreview(link.preview)
+    if (link.frame) editor.frameView(link.frame)
+    return true
+  })
+  return ok ?? false
+}
+
+/** Makes a share link for one of my designs, or gets the one it has. Returns its token. */
+export async function share(designId: string): Promise<string | undefined> {
+  if (!requireSave(() => share(designId))) return undefined
+  return busy(async () => {
+    const token = await createShareLink(designId)
+    await refreshLibrary()
+    return token
+  })
+}
+
+/** Turns a design's share link off, so the link stops working */
+export function unshare(designId: string) {
+  if (!requireSave(() => unshare(designId))) return
+  return busy(async () => {
+    await stopSharing(designId)
+    editor.toast('Share link turned off. Anyone who has it can’t open the design now.')
+    await refreshLibrary()
   })
 }
 
@@ -359,7 +423,10 @@ export function deleteDesign(designId: string) {
   if (!requireSave(() => deleteDesign(designId))) return
   return busy(async () => {
     await cloudStore.delete(designId)
-    if (state.designId === designId) set({ designId: null, optionId: null, options: [], designName: '' })
+    if (state.designId === designId) {
+      leaveLink()
+      set({ designId: null, optionId: null, options: [], designName: '' })
+    }
     refreshLibrary()
   })
 }
@@ -384,6 +451,7 @@ export function copyLocalDesigns() {
 
 /** Forgets the open design, so the next save starts a new one. The pixels stay. */
 export function detachDesign() {
+  leaveLink()
   set({ designId: null, optionId: null, options: [], designName: '', openFrom: 'mine' })
 }
 

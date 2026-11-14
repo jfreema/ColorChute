@@ -48,6 +48,8 @@ export interface EditorState extends DocState {
   pixelsVersion: number
   /** Inks hidden on screen only, so the shirt shows through. Saves and exports still have them. */
   hiddenInks: string[]
+  /** A part of the scene the stage should zoom to fill, from a design link, in document pixels */
+  viewFrame: { rect: Rect; id: number } | null
   dirty: boolean
   canUndo: boolean
   canRedo: boolean
@@ -115,6 +117,7 @@ export class Editor {
       cropRect: null,
       pixelsVersion: 0,
       hiddenInks: [],
+      viewFrame: null,
       dirty: false,
       canUndo: false,
       canRedo: false,
@@ -208,6 +211,11 @@ export class Editor {
 
   setPreview(p: Partial<PreviewSettings>) {
     this.set({ preview: { ...this.state.preview, ...p } })
+  }
+
+  /** Zooms the stage so this part of the scene fills it, as a design link asks */
+  frameView(rect: Rect) {
+    this.set({ viewFrame: { rect, id: Date.now() } })
   }
 
   setPrimary(hex: string) {

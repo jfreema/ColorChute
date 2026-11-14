@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { designInks } from '../editor/checks'
 import { readPixels } from '../editor/doc'
+import { stageView } from '../editor/links'
 import { hexToRgba } from '../lib/color'
 import { hideInks, Rect } from '../editor/pixels'
 import { outlineSegments, SelectMode } from '../editor/selection'
@@ -51,6 +52,7 @@ export function Stage({ onDropFiles, focus, onToggleFocus }: {
   const brushSize = useEditor((s) => s.options.brushSize)
   const canUndo = useEditor((s) => s.canUndo)
   const canRedo = useEditor((s) => s.canRedo)
+  const viewFrame = useEditor((s) => s.viewFrame)
 
   const box = useRef<HTMLDivElement>(null)
   const art = useRef<HTMLCanvasElement>(null)
@@ -61,6 +63,8 @@ export function Stage({ onDropFiles, focus, onToggleFocus }: {
   const [size, setSize] = useState({ w: 800, h: 600 })
   /** True until the person zooms or pans, so a resized stage refits instead of drifting */
   const fitted = useRef(true)
+  /** The part of the scene a design link asked to fill the stage with; null fits the whole scene */
+  const frame = useRef<Rect | null>(null)
   const drag = useRef<Drag | null>(null)
   const cursor = useRef<{ x: number; y: number } | null>(null)
   const [space, setSpace] = useState(false)
@@ -87,12 +91,18 @@ export function Stage({ onDropFiles, focus, onToggleFocus }: {
   }, [preview.mode, preview.sizeMode, width, height, dpi])
 
   const fit = useCallback(() => {
-    const b = scene.bounds
-    const pad = 28
-    const zoom = Math.min((size.w - pad * 2) / b.w, (size.h - pad * 2) / b.h)
+    const b = frame.current ?? scene.bounds
+    // A link's frame is exactly what its sender saw, edge to edge
+    const pad = frame.current ? 0 : 28
+    const zoom = Math.min(32, Math.max(0.01, Math.min((size.w - pad * 2) / b.w, (size.h - pad * 2) / b.h)))
     setView({ zoom, x: size.w / 2 - (b.x + b.w / 2) * zoom, y: size.h / 2 - (b.y + b.h / 2) * zoom })
     fitted.current = true
   }, [scene, size])
+  /** Fits the whole scene, forgetting any link's frame */
+  const fitAll = useCallback(() => {
+    frame.current = null
+    fit()
+  }, [fit])
 
   useLayoutEffect(() => {
     const el = box.current!
@@ -103,7 +113,22 @@ export function Stage({ onDropFiles, focus, onToggleFocus }: {
   }, [])
 
   // Refit when the document or background changes shape
-  useEffect(fit, [width, height, preview.mode, preview.sizeMode, size.w > 0 && size.h > 0]) // eslint-disable-line
+  useEffect(fitAll, [width, height, preview.mode, preview.sizeMode, size.w > 0 && size.h > 0]) // eslint-disable-line
+
+  // A design link's view: fill the stage with what its sender saw. (After the refit above, which a link's new
+  // background can set off in the same render.)
+  useEffect(() => {
+    if (!viewFrame) return
+    frame.current = viewFrame.rect
+    fit()
+  }, [viewFrame]) // eslint-disable-line
+
+  // Tell the share dialog what's on screen
+  useEffect(() => {
+    stageView.frame = fitted.current
+      ? frame.current
+      : { x: -view.x / view.zoom, y: -view.y / view.zoom, w: size.w / view.zoom, h: size.h / view.zoom }
+  }, [view, size])
 
   // When the stage itself changes size (focus mode, window resize), refit if the view was fitted, otherwise keep
   // the same spot in the middle
@@ -117,10 +142,9 @@ export function Stage({ onDropFiles, focus, onToggleFocus }: {
   }, [size.w, size.h]) // eslint-disable-line
 
   useEffect(() => {
-    const onFit = () => fit()
-    window.addEventListener('colorchute:fit', onFit)
-    return () => window.removeEventListener('colorchute:fit', onFit)
-  }, [fit])
+    window.addEventListener('colorchute:fit', fitAll)
+    return () => window.removeEventListener('colorchute:fit', fitAll)
+  }, [fitAll])
 
   // MARK: Drawing the art
 
@@ -497,7 +521,7 @@ export function Stage({ onDropFiles, focus, onToggleFocus }: {
         <button className="btn small icon" title="Zoom in (Ctrl +)" onClick={() => zoomAt(1.25, size.w / 2, size.h / 2)}>
           <ZoomIn size={14} />
         </button>
-        <button className="btn small icon" title="Fit (Ctrl 0)" onClick={fit}>
+        <button className="btn small icon" title="Fit (Ctrl 0)" onClick={fitAll}>
           <Maximize size={14} />
         </button>
       </div>

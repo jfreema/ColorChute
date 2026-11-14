@@ -12,8 +12,8 @@ export function OptionStrip({ confirmDiscard, onSaveAsOption, readOnly }: {
   readOnly?: boolean
 }) {
   const options = useDesigns((s) => s.options)
-  // A public design's options belong to its owner; saving makes your own copy, which you can then change
-  const locked = useDesigns((s) => s.openFrom === 'public') || readOnly
+  // A public or shared design's options belong to its owner; saving makes your own copy, which you can then change
+  const locked = useDesigns((s) => s.openFrom !== 'mine') || readOnly
   const optionId = useDesigns((s) => s.optionId)
   const busy = useDesigns((s) => s.busy)
   const dirty = useEditor((s) => s.dirty)

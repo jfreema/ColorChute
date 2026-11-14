@@ -4,12 +4,13 @@ compatibility_date = "2026-11-01"
 # Keep variables set in the Cloudflare dashboard. Without this, every deploy deletes plain-text variables.
 keep_vars = true
 
-# The built site. Only /api/ runs the Worker; everything else is served straight from here.
+# The built site. Only /api/ and share links (/s/, /p/, for their link previews) run the Worker; everything else is
+# served straight from here.
 [assets]
 directory = "./dist"
 binding = "ASSETS"
 not_found_handling = "single-page-application"
-run_worker_first = ["/api/*"]
+run_worker_first = ["/api/*", "/s/*", "/p/*"]
 
 # Accounts, approvals and saved designs (free plan). Secrets: GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, ADMIN_EMAILS.
 [[d1_databases]]

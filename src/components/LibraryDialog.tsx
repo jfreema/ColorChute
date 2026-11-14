@@ -110,6 +110,7 @@ function DesignCard({ d, selected, onOpen, editable, admin }: {
         <div className="hint">
           {d.optionCount} color option{d.optionCount === 1 ? '' : 's'} · {new Date(d.updatedAt).toLocaleDateString()}
           {d.mine && ' · Yours'}
+          {d.shared && ' · Shared by link'}
         </div>
         {editable && <div className="acts" onClick={(e) => e.stopPropagation()}>
           <button className="icon-btn" title="Rename" aria-label={`Rename ${d.name}`}

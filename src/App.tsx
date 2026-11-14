@@ -9,6 +9,7 @@ import { NewDesignDialog } from './components/NewDesignDialog'
 import { OptionsBar } from './components/OptionsBar'
 import { OptionStrip } from './components/OptionStrip'
 import { ResizeDialog } from './components/ResizeDialog'
+import { ShareDialog } from './components/ShareDialog'
 import { Sidebar } from './components/Sidebar'
 import { Stage } from './components/Stage'
 import { Toolbar, TOOLS } from './components/Toolbar'
@@ -16,7 +17,8 @@ import { Dialog } from './components/Dialog'
 import { LogIn, Save } from './components/icons'
 import { canSave, loadAccount, onAccountChange, requireSave, useAccount } from './editor/account'
 import { readPixels } from './editor/doc'
-import { detachDesign, getDesigns, openDesign, refreshLibrary, save } from './editor/designs'
+import { detachDesign, getDesigns, openDesign, openLink, refreshLibrary, save } from './editor/designs'
+import { leaveLink, parseLink } from './editor/links'
 import { clearCloudCache } from './editor/storage'
 import { download } from './editor/exporting'
 import { contentBounds } from './editor/pixels'
@@ -24,7 +26,7 @@ import { editor, hadSettings, ProjectFile, useEditor } from './editor/store'
 import { slug } from './lib/printSpecs'
 import { readPngDpi } from './lib/png'
 
-type Modal = 'new' | 'resize' | 'export' | 'library' | 'nameOption' | 'admin' | null
+type Modal = 'new' | 'resize' | 'export' | 'library' | 'nameOption' | 'admin' | 'share' | null
 
 function isTyping(e: KeyboardEvent) {
   const t = e.target as HTMLElement
@@ -95,7 +97,13 @@ export function App() {
 
   useEffect(() => {
     const load = () => refreshLibrary().catch(() => {})
-    loadAccount().then(load).then(() => {
+    // A share link (/s/…) or a public design's link (/p/…) opens that design the way its sender saw it
+    const link = parseLink(location.href)
+    loadAccount().then(load).then(async () => {
+      if (link) {
+        if (await openLink(link)) return
+        leaveLink()
+      }
       // Someone just looking gets the newest public design up front instead of an empty canvas
       const first = getDesigns().publicLibrary[0]
       if (viewRef.current && first && !getDesigns().designId && isBlank()) openDesign(first.id, 'public')
@@ -172,6 +180,7 @@ export function App() {
     exportFile: () => setModal('export'),
     resize: () => setModal('resize'),
     admin: () => setModal('admin'),
+    share: () => setModal('share'),
   }
 
   // Paste an image to add it as a layer
@@ -281,6 +290,7 @@ export function App() {
       {modal === 'library' && <LibraryDialog onClose={close} confirmDiscard={confirmDiscard} />}
       {modal === 'nameOption' && <NameOptionDialog onClose={close} />}
       {modal === 'admin' && <AdminDialog onClose={close} />}
+      {modal === 'share' && <ShareDialog onClose={close} />}
       <AccountDialog />
       {pending && (
         <Dialog

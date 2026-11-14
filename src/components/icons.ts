@@ -3,5 +3,5 @@ export {
   FolderOpen, Hand, ImagePlus, Layers, Maximize, Maximize2, Merge, Minimize2, Minus, Move, PaintBucket, Pencil, Pipette, Plus,
   Redo2, Save, Scaling, Shirt, Square, SquareDashed, Trash2, Undo2, Wand2, X, ZoomIn, ZoomOut, Scissors, Library,
   TriangleAlert, CircleCheck, OctagonX, Package, Clipboard, LogIn, LogOut, ShieldCheck, Users, UserRound, Clock,
-  CloudUpload, Globe,
+  CloudUpload, Globe, Share2, Link2, Link2Off,
 } from 'lucide-react'

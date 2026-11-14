@@ -4,8 +4,9 @@ import type { ColorOption, Design } from './designs'
 
 /**
  * Where saved designs live. Approved accounts save to the server, so designs follow them to any computer. Public
- * designs, the ones an admin marked "Available to public", are read only and anyone can open them. This browser's
- * IndexedDB only holds designs saved before accounts existed, offered to copy into an account.
+ * designs, the ones an admin marked "Available to public", are read only and anyone can open them. So are shared
+ * designs, which anyone with the design's share link can open. This browser's IndexedDB only holds designs saved
+ * before accounts existed, offered to copy into an account.
  */
 export interface DesignSummary {
   id: string
@@ -17,6 +18,8 @@ export interface DesignSummary {
   shirt?: string
   /** One of my designs that an admin made public */
   public?: boolean
+  /** One of my designs with a share link: the link's token */
+  shared?: string
   /** A public design that's one of mine, and its id among my designs */
   mine?: boolean
   designId?: string
@@ -84,6 +87,21 @@ function toMeta(d: Design): DesignMeta {
   }
 }
 
+/** Downloads every option's thumbnail and layer images, given where each image lives */
+function downloadOptions(m: DesignMeta, url: (key: string, v: number) => string, has?: Map<string, Blob>) {
+  return Promise.all(
+    m.options.map(async (o): Promise<ColorOption> => {
+      const [thumbnail, ...pngs] = await Promise.all([
+        fetchBlob(url(`${o.id}/thumb`, o.updatedAt)),
+        ...o.layers.map((l) => fetchBlob(url(`${o.id}/${l.id}`, o.updatedAt))),
+      ])
+      has?.set(`${o.id}/thumb`, thumbnail)
+      o.layers.forEach((l, i) => has?.set(`${o.id}/${l.id}`, pngs[i]))
+      return { ...o, thumbnail, layers: o.layers.map((l, i) => ({ ...l, png: pngs[i] })) }
+    }),
+  )
+}
+
 async function fetchBlob(url: string): Promise<Blob> {
   let res: Response
   try {
@@ -107,6 +125,7 @@ export const cloudStore: DesignStore = {
     return designs.map((m) => ({
       ...summary(m, m.options[0] ? blobUrl(m.id, `${m.options[0].id}/thumb`, m.options[0].updatedAt) : ''),
       public: (m as PublicMeta).public,
+      shared: (m as PublicMeta).shared,
     }))
   },
 
@@ -121,17 +140,7 @@ export const cloudStore: DesignStore = {
       throw e
     }
     const has = new Map<string, Blob>()
-    const options = await Promise.all(
-      m.options.map(async (o): Promise<ColorOption> => {
-        const [thumbnail, ...pngs] = await Promise.all([
-          fetchBlob(blobUrl(id, `${o.id}/thumb`, o.updatedAt)),
-          ...o.layers.map((l) => fetchBlob(blobUrl(id, `${o.id}/${l.id}`, o.updatedAt))),
-        ])
-        has.set(`${o.id}/thumb`, thumbnail)
-        o.layers.forEach((l, i) => has.set(`${o.id}/${l.id}`, pngs[i]))
-        return { ...o, thumbnail, layers: o.layers.map((l, i) => ({ ...l, png: pngs[i] })) }
-      }),
-    )
+    const options = await downloadOptions(m, (key, v) => blobUrl(id, key, v), has)
     const d: Design = { ...m, id, options }
     cache.set(id, d)
     onServer.set(id, has)
@@ -176,7 +185,7 @@ export async function setDesignPublic(id: string, pub: boolean) {
 
 // MARK: Public designs
 
-type PublicMeta = DesignMeta & { mine?: boolean; designId?: string; public?: boolean }
+type PublicMeta = DesignMeta & { mine?: boolean; designId?: string; public?: boolean; shared?: string }
 
 const publicMeta = new Map<string, PublicMeta>()
 const publicCache = new Map<string, Design>()
@@ -203,18 +212,51 @@ export const publicStore = {
     if (!publicMeta.has(id)) await publicStore.list()
     const m = publicMeta.get(id)
     if (!m) return undefined
-    const options = await Promise.all(
-      m.options.map(async (o): Promise<ColorOption> => {
-        const [thumbnail, ...pngs] = await Promise.all([
-          fetchBlob(publicBlobUrl(id, `${o.id}/thumb`, o.updatedAt)),
-          ...o.layers.map((l) => fetchBlob(publicBlobUrl(id, `${o.id}/${l.id}`, o.updatedAt))),
-        ])
-        return { ...o, thumbnail, layers: o.layers.map((l, i) => ({ ...l, png: pngs[i] })) }
-      }),
-    )
-    const { mine: _m, designId: _d, public: _p, ...rest } = m
+    const options = await downloadOptions(m, (key, v) => publicBlobUrl(id, key, v))
+    const { mine: _m, designId: _d, public: _p, shared: _s, ...rest } = m
     const d: Design = { ...rest, id, options }
     publicCache.set(id, d)
+    return d
+  },
+}
+
+// MARK: Share links
+
+/** Makes a share link for one of my designs, or gets the one it has. Returns the link's token. */
+export async function createShareLink(designId: string): Promise<string> {
+  const { token } = await api<{ token: string }>(`/api/designs/${designId}/share`, { method: 'PUT' })
+  return token
+}
+
+/** Turns a design's share link off for good. Sharing again makes a new link. */
+export async function stopSharing(designId: string) {
+  await api(`/api/designs/${designId}/share`, { method: 'DELETE' })
+}
+
+const sharedCache = new Map<string, Design>()
+const sharedBlobUrl = (token: string, key: string, v: number) => `/api/shared/${token}/blobs/${key}?v=${v}`
+
+/** Designs opened from a share link, by the link's token. Read only, like public designs. */
+export const sharedStore = {
+  /** A shared design's details, or undefined when the link was turned off. Its owner gets `mine` and their own id. */
+  async meta(token: string): Promise<PublicMeta | undefined> {
+    try {
+      return await api<PublicMeta>(`/api/shared/${token}`)
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 404) return undefined
+      throw e
+    }
+  },
+
+  async get(token: string): Promise<Design | undefined> {
+    const hit = sharedCache.get(token)
+    if (hit) return hit
+    const m = await sharedStore.meta(token)
+    if (!m) return undefined
+    const options = await downloadOptions(m, (key, v) => sharedBlobUrl(token, key, v))
+    const { mine: _m, designId: _d, public: _p, shared: _s, ...rest } = m
+    const d: Design = { ...rest, id: token, options }
+    sharedCache.set(token, d)
     return d
   },
 }

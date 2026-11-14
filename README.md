@@ -14,6 +14,7 @@ requirements.
 - **Keep every colorway.** Save a design once and keep several color options of it side by side.
 - **See it on a shirt.** Preview on a plain square, a simple t-shirt or a realistic t-shirt, in any shirt color.
 - **Send it to the printer.** Export a PNG with or without a background, sized and checked against Epic Sports' specs.
+- **Share it.** Send a view-only link that opens the design on the same color option, shirt and zoom you're looking at.
 
 Anyone can open it and look at the public designs. Making and saving your own needs a Google sign-in that the admin
 has approved, and saved designs follow your account to any computer.

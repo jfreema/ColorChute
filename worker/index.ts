@@ -7,6 +7,9 @@
  * never touch (plain-text ones were once deleted by a deploy; `keep_vars` in wrangler.toml now guards those too):
  *   GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET  the Google OAuth web client
  *   ADMIN_EMAILS                            comma-separated Google addresses that are always approved admins
+ *
+ * Share links (/s/<token>) let anyone with the link look at one design, public or not. The Worker answers those pages
+ * itself only to add link-preview tags (the design's name and picture) to the app's index.html.
  */
 
 interface Env {
@@ -37,6 +40,8 @@ const CHUNK = 1_000_000
 const MAX_BLOB = 25_000_000
 const MAX_META = 300_000
 const ID = '[A-Za-z0-9_-]{1,64}'
+/** A share link (/s/<token>) or a public design's link (/p/<id>) */
+const LINK_PAGE = new RegExp(`^/(s|p)/(${ID})$`)
 
 class HttpError extends Error {
   constructor(public status: number, message: string) {
@@ -47,6 +52,8 @@ class HttpError extends Error {
 export default {
   async fetch(req: Request, env: Env): Promise<Response> {
     const url = new URL(req.url)
+    const link = url.pathname.match(LINK_PAGE)
+    if (link && req.method === 'GET') return linkPage(env, url, link[1] as 's' | 'p', link[2])
     if (!url.pathname.startsWith('/api/')) return env.ASSETS.fetch(req)
     try {
       return await route(req, env, url)
@@ -88,6 +95,15 @@ async function route(req: Request, env: Env, url: URL): Promise<Response> {
   if (r && m === 'GET') return getPublicBlob(env, r[1], `${r[2]}/${r[3]}`)
   r = p.match(new RegExp(`^/api/designs/(${ID})/public$`))
   if (r && m === 'PUT') return setPublic(req, env, requireApproved(requireAdmin(user, env), env), r[1])
+
+  // Share links: anyone with the link can look; the owner can make one or turn it off
+  r = p.match(new RegExp(`^/api/shared/(${ID})$`))
+  if (r && m === 'GET') return getShared(env, user, r[1])
+  r = p.match(new RegExp(`^/api/shared/(${ID})/blobs/(${ID})/(${ID})$`))
+  if (r && m === 'GET') return getSharedBlob(env, r[1], `${r[2]}/${r[3]}`)
+  r = p.match(new RegExp(`^/api/designs/(${ID})/share$`))
+  if (r && m === 'PUT') return share(env, requireApproved(user, env), r[1])
+  if (r && m === 'DELETE') return unshare(env, requireApproved(user, env), r[1])
 
   if (p === '/api/designs' && m === 'GET') return listDesigns(env, requireApproved(user, env))
   r = p.match(new RegExp(`^/api/designs/(${ID})$`))
@@ -131,6 +147,11 @@ function schema(env: Env) {
     // owner's account id out of public addresses.
     env.DB.prepare(`CREATE TABLE IF NOT EXISTS public_designs (
       id TEXT PRIMARY KEY, user_id TEXT NOT NULL, design_id TEXT NOT NULL, published_at INTEGER NOT NULL,
+      UNIQUE (user_id, design_id))`),
+    // Share links: anyone with the link can view the design, public or not, until its owner turns the link off.
+    // The id is the secret in the link, so it's long and random.
+    env.DB.prepare(`CREATE TABLE IF NOT EXISTS share_links (
+      id TEXT PRIMARY KEY, user_id TEXT NOT NULL, design_id TEXT NOT NULL, created_at INTEGER NOT NULL,
       UNIQUE (user_id, design_id))`),
   ]).catch((e) => {
     ready = null
@@ -322,11 +343,14 @@ function rowToDesign(r: { id: string; meta: string }) {
 
 async function listDesigns(env: Env, u: UserRow) {
   const { results } = await env.DB.prepare(
-    `SELECT d.id, d.meta, p.id IS NOT NULL AS pub FROM designs d
+    `SELECT d.id, d.meta, p.id IS NOT NULL AS pub, s.id AS share FROM designs d
      LEFT JOIN public_designs p ON p.user_id = d.user_id AND p.design_id = d.id
+     LEFT JOIN share_links s ON s.user_id = d.user_id AND s.design_id = d.id
      WHERE d.user_id = ? ORDER BY d.updated_at DESC`,
-  ).bind(u.id).all<{ id: string; meta: string; pub: number }>()
-  return json({ designs: results.map((r) => ({ ...rowToDesign(r), public: r.pub === 1 })) })
+  ).bind(u.id).all<{ id: string; meta: string; pub: number; share: string | null }>()
+  return json({
+    designs: results.map((r) => ({ ...rowToDesign(r), public: r.pub === 1, ...(r.share ? { shared: r.share } : {}) })),
+  })
 }
 
 /** Every public design, newest first. The owner's own come back marked, with their real id, so they open as theirs. */
@@ -354,6 +378,44 @@ async function setPublic(req: Request, env: Env, u: UserRow, id: string) {
     : env.DB.prepare('DELETE FROM public_designs WHERE user_id = ? AND design_id = ?').bind(u.id, id)
   ).run()
   return json({ ok: true })
+}
+
+/** Makes a share link for one of my designs, or returns the one it already has */
+async function share(env: Env, u: UserRow, id: string) {
+  const d = await env.DB.prepare('SELECT id FROM designs WHERE user_id = ? AND id = ?').bind(u.id, id).first()
+  if (!d) throw new HttpError(404, 'Save this design before sharing it')
+  await env.DB.prepare('INSERT OR IGNORE INTO share_links (id, user_id, design_id, created_at) VALUES (?, ?, ?, ?)')
+    .bind(randomToken(12), u.id, id, Date.now()).run()
+  const row = await env.DB.prepare('SELECT id FROM share_links WHERE user_id = ? AND design_id = ?').bind(u.id, id)
+    .first<{ id: string }>()
+  return json({ token: row!.id })
+}
+
+/** Turns a design's share link off. Sharing again makes a new link, so the old one stays dead. */
+async function unshare(env: Env, u: UserRow, id: string) {
+  await env.DB.prepare('DELETE FROM share_links WHERE user_id = ? AND design_id = ?').bind(u.id, id).run()
+  return json({ ok: true })
+}
+
+/** A shared design's details, for anyone with the link. Its owner gets their own id back, so it opens as theirs. */
+async function getShared(env: Env, u: UserRow | null, token: string) {
+  const r = await env.DB.prepare(
+    `SELECT s.user_id, d.id, d.meta FROM share_links s JOIN designs d ON d.user_id = s.user_id AND d.id = s.design_id
+     WHERE s.id = ?`,
+  ).bind(token).first<{ user_id: string; id: string; meta: string }>()
+  if (!r) throw new HttpError(404, 'This share link was turned off, or the design was deleted.')
+  const mine = u?.id === r.user_id
+  return json({ ...JSON.parse(r.meta), id: token, ...(mine ? { mine: true, designId: r.id } : {}) })
+}
+
+async function getSharedBlob(env: Env, token: string, key: string) {
+  const { results } = await env.DB.prepare(
+    `SELECT b.data FROM share_links s
+     JOIN blobs b ON b.user_id = s.user_id AND b.design_id = s.design_id
+     WHERE s.id = ? AND b.key = ? ORDER BY b.chunk`,
+  ).bind(token, key).all<{ data: ArrayBuffer | number[] }>()
+  // Private, so nothing between here and the viewer keeps a copy after the link is turned off
+  return pngResponse(results, 'private')
 }
 
 async function getDesign(env: Env, u: UserRow, id: string) {
@@ -395,6 +457,7 @@ async function deleteDesign(env: Env, u: UserRow, id: string) {
     env.DB.prepare('DELETE FROM designs WHERE user_id = ? AND id = ?').bind(u.id, id),
     env.DB.prepare('DELETE FROM blobs WHERE user_id = ? AND design_id = ?').bind(u.id, id),
     env.DB.prepare('DELETE FROM public_designs WHERE user_id = ? AND design_id = ?').bind(u.id, id),
+    env.DB.prepare('DELETE FROM share_links WHERE user_id = ? AND design_id = ?').bind(u.id, id),
   ])
   return json({ ok: true })
 }
@@ -443,6 +506,57 @@ function pngResponse(results: { data: ArrayBuffer | number[] }[], cache: 'privat
   }
   // URLs carry the option's save time, so a cached copy is never stale
   return new Response(out, { headers: { 'Content-Type': 'image/png', 'Cache-Control': `${cache}, max-age=31536000, immutable` } })
+}
+
+// MARK: Link previews
+
+/**
+ * The app's page for a share link or a public design's link, with tags that give the link a preview (name, color
+ * options and a picture) when it's pasted into a text message or chat. The app itself reads the link and opens the
+ * design. A link that doesn't work gets the plain page, and the app says why.
+ */
+async function linkPage(env: Env, url: URL, kind: 's' | 'p', id: string): Promise<Response> {
+  const index = await env.ASSETS.fetch(new Request(new URL('/', url)))
+  if (!index.ok) return index
+  let design: DesignMeta | null = null
+  try {
+    await schema(env)
+    const table = kind === 's' ? 'share_links' : 'public_designs'
+    const row = await env.DB.prepare(
+      `SELECT d.meta FROM ${table} l JOIN designs d ON d.user_id = l.user_id AND d.id = l.design_id WHERE l.id = ?`,
+    ).bind(id).first<{ meta: string }>()
+    design = row ? JSON.parse(row.meta) : null
+  } catch (e) {
+    console.error('Link preview failed', e)
+  }
+  const headers = new Headers(index.headers)
+  headers.set('Cache-Control', 'no-cache')
+  headers.delete('ETag')
+  if (!design?.options?.length) return new Response(index.body, { status: 200, headers })
+
+  type Opt = DesignMeta['options'][number] & { name?: string; updatedAt?: number }
+  const options = design.options as Opt[]
+  const option = options.find((o) => o.id === url.searchParams.get('option')) ?? options[0]
+  const base = kind === 's' ? `/api/shared/${id}` : `/api/public/designs/${id}`
+  const names = options.map((o) => o.name).filter(Boolean)
+  const description = options.length === 1
+    ? 'A shirt design. Open it to see it on a shirt.'
+    : `${options.length} color options: ${names.slice(0, 4).join(', ')}${names.length > 4 ? '…' : ''}. Open it to compare them on a shirt.`
+  const esc = (s: string) => s.replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`)
+  const tag = (property: string, content: string) => `<meta property="${property}" content="${esc(content)}">`
+  const tags = [
+    tag('og:type', 'website'),
+    tag('og:site_name', 'ColorChute'),
+    tag('og:title', design.name),
+    tag('og:description', description),
+    tag('og:url', url.toString()),
+    tag('og:image', `${url.origin}${base}/blobs/${option.id}/thumb?v=${option.updatedAt ?? 0}`),
+    '<meta name="twitter:card" content="summary">',
+  ].join('')
+  return new HTMLRewriter()
+    .on('head', { element: (e) => void e.append(tags, { html: true }) })
+    .on('meta[name="description"]', { element: (e) => void e.setAttribute('content', description) })
+    .transform(new Response(index.body, { status: 200, headers }))
 }
 
 // MARK: Helpers
