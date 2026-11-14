@@ -541,7 +541,7 @@ async function linkPage(env: Env, url: URL, kind: 's' | 'p', id: string): Promis
   const names = options.map((o) => o.name).filter(Boolean)
   const description = options.length === 1
     ? 'A shirt design. Open it to see it on a shirt.'
-    : `${options.length} color options: ${names.slice(0, 4).join(', ')}${names.length > 4 ? '…' : ''}. Open it to compare them on a shirt.`
+    : `${options.length} color options: ${names.slice(0, 4).join(', ')}${names.length > 4 ? ' and more' : ''}. Open it to compare them on a shirt.`
   const esc = (s: string) => s.replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`)
   const tag = (property: string, content: string) => `<meta property="${property}" content="${esc(content)}">`
   const tags = [
