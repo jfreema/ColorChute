@@ -249,6 +249,7 @@ export function openDesign(designId: string) {
   return busy(async () => {
     const d = await activeStore().get(designId)
     if (!d || !d.options.length) return
+    editor.showAllInks()
     await loadOption(d.options[0])
     set({ optionId: d.options[0].id })
     summarize(d)

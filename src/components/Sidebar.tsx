@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { inkColors } from '../editor/checks'
-import { ctx2d, makeCanvas, readPixels } from '../editor/doc'
+import { designInks } from '../editor/checks'
 import { ColorCount } from '../editor/pixels'
 import { editor, useEditor } from '../editor/store'
 import { isHex, normalizeHex } from '../lib/color'
@@ -124,17 +123,13 @@ function ColorsPanel() {
 function InksPanel() {
   const version = useEditor((s) => s.pixelsVersion)
   const primary = useEditor((s) => s.primary)
+  const hidden = useEditor((s) => s.hiddenInks)
   const [inks, setInks] = useState<ColorCount[]>([])
   useEffect(() => {
     const id = setTimeout(() => {
-      const src = editor.composite()
-      // Downsample without smoothing, so no in-between colors appear
-      const k = Math.min(1, 500 / Math.max(src.width, src.height))
-      const c = makeCanvas(Math.max(1, Math.round(src.width * k)), Math.max(1, Math.round(src.height * k)))
-      const g = ctx2d(c)
-      g.imageSmoothingEnabled = false
-      g.drawImage(src, 0, 0, c.width, c.height)
-      setInks(inkColors(readPixels(c)))
+      const found = designInks(editor.composite())
+      setInks(found)
+      editor.keepHiddenInks(found.map((k) => k.hex))
     }, 250)
     return () => clearTimeout(id)
   }, [version])
@@ -151,39 +146,58 @@ function InksPanel() {
       </div>
       <div className="card">
         {inks.length === 0 && <div className="card-row hint">Paint or drop in an image to see its colors here.</div>}
-        {inks.map((ink) => (
-          <div className="ink-row" key={ink.hex}>
-            <button className={`swatch ${ink.hex === primary ? 'selected' : ''}`} style={{ background: ink.hex }}
-              title="Use this color" aria-label={`Use ${ink.hex}`} onClick={() => editor.setPrimary(ink.hex)} />
-            <div className="grow">
-              <div className="hex">{epicColorName(ink.hex) ?? ink.hex}</div>
-              <div className="share">
-                {Math.round(ink.share * 100)}% of the art
-                {(() => {
-                  const near = nearestEpicColor(ink.hex)
-                  if (near.distance < EPIC_MATCH) return null
-                  return (
-                    <>
-                      {' · '}
-                      <button className="link-btn" title={`Not one of Epic's colors. Change it to ${near.swatch.name} on every layer.`}
-                        onClick={() => editor.replaceEverywhere(ink.hex, near.swatch.hex, inks.map((k) => k.hex))}>
-                        Use {near.swatch.name}
-                      </button>
-                    </>
-                  )
-                })()}
+        {inks.map((ink) => {
+          const off = hidden.includes(ink.hex)
+          const name = epicColorName(ink.hex) ?? ink.hex
+          return (
+            <div className={`ink-row ${off ? 'off' : ''}`} key={ink.hex}>
+              <button
+                className="icon-btn"
+                title={off ? 'Show this ink again' : 'Hide this ink on screen so the shirt shows through. The art isn\'t changed.'}
+                aria-label={off ? `Show ${name}` : `Hide ${name}`}
+                aria-pressed={off}
+                onClick={() => editor.toggleInk(ink.hex)}
+              >
+                {off ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+              <button className={`swatch ${ink.hex === primary ? 'selected' : ''}`} style={{ background: ink.hex }}
+                title="Use this color" aria-label={`Use ${ink.hex}`} onClick={() => editor.setPrimary(ink.hex)} />
+              <div className="grow">
+                <div className="hex">{name}</div>
+                <div className="share">
+                  {off ? 'Hidden' : `${Math.round(ink.share * 100)}% of the art`}
+                  {(() => {
+                    const near = nearestEpicColor(ink.hex)
+                    if (near.distance < EPIC_MATCH) return null
+                    return (
+                      <>
+                        {' · '}
+                        <button className="link-btn" title={`Not one of Epic's colors. Change it to ${near.swatch.name} on every layer.`}
+                          onClick={() => editor.replaceEverywhere(ink.hex, near.swatch.hex, inks.map((k) => k.hex))}>
+                          Use {near.swatch.name}
+                        </button>
+                      </>
+                    )
+                  })()}
+                </div>
               </div>
+              <button
+                className="btn small"
+                disabled={ink.hex === primary}
+                title={`Change this ink, and only this ink, to the fill color on every layer`}
+                onClick={() => editor.replaceEverywhere(ink.hex, primary, inks.map((k) => k.hex))}
+              >
+                Swap to <span className="swatch" style={{ width: 14, height: 14, borderRadius: 4, background: primary }} />
+              </button>
             </div>
-            <button
-              className="btn small"
-              disabled={ink.hex === primary}
-              title={`Change this ink, and only this ink, to the fill color on every layer`}
-              onClick={() => editor.replaceEverywhere(ink.hex, primary, inks.map((k) => k.hex))}
-            >
-              Swap to <span className="swatch" style={{ width: 14, height: 14, borderRadius: 4, background: primary }} />
-            </button>
+          )
+        })}
+        {hidden.length > 0 && (
+          <div className="card-row hint ink-hidden-note">
+            Hidden on screen only. Saving and exporting still include every ink.{' '}
+            <button className="link-btn" onClick={() => editor.showAllInks()}>Show all</button>
           </div>
-        ))}
+        )}
       </div>
     </>
   )

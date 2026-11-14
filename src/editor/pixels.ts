@@ -150,6 +150,37 @@ export function replaceInk(px: Pixels, from: RGBA, others: RGBA[], to: RGBA, sel
   return n
 }
 
+/**
+ * Clears every pixel that belongs to one of the `hidden` inks: nearer to it than to any other ink, and within
+ * `maxDistance`. Only for showing art without those inks; layers themselves are never changed. Returns how many.
+ */
+export function hideInks(px: Pixels, hidden: RGBA[], inks: RGBA[], maxDistance = 60): number {
+  if (!hidden.length) return 0
+  const d = px.data
+  const max2 = maxDistance * maxDistance
+  const same = (a: RGBA, b: RGBA) => a[0] === b[0] && a[1] === b[1] && a[2] === b[2]
+  const rest = inks.filter((o) => !hidden.some((h) => same(h, o)))
+  let n = 0
+  for (let i = 0; i < d.length; i += 4) {
+    if (d[i + 3] === 0) continue
+    const r = d[i], g = d[i + 1], b = d[i + 2]
+    let near = Infinity
+    for (const h of hidden) near = Math.min(near, (r - h[0]) ** 2 + (g - h[1]) ** 2 + (b - h[2]) ** 2)
+    if (near > max2) continue
+    let mine = true
+    for (const o of rest) {
+      if ((r - o[0]) ** 2 + (g - o[1]) ** 2 + (b - o[2]) ** 2 < near) {
+        mine = false
+        break
+      }
+    }
+    if (!mine) continue
+    d[i] = d[i + 1] = d[i + 2] = d[i + 3] = 0
+    n++
+  }
+  return n
+}
+
 /** A filled circle of `color` at (cx, cy), inside the selection. Returns the box it covers, clipped to the image. */
 export function stamp(px: Pixels, cx: number, cy: number, size: number, color: RGBA, selection: Mask | null): Rect | null {
   const { width: w, height: h, data: d } = px

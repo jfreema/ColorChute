@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { Rect } from '../editor/pixels'
+import { designInks } from '../editor/checks'
+import { readPixels } from '../editor/doc'
+import { hexToRgba } from '../lib/color'
+import { hideInks, Rect } from '../editor/pixels'
 import { outlineSegments, SelectMode } from '../editor/selection'
 import { editor, useEditor } from '../editor/store'
 import {
@@ -40,6 +43,7 @@ export function Stage({ onDropFiles, focus, onToggleFocus }: {
   const height = useEditor((s) => s.height)
   const dpi = useEditor((s) => s.dpi)
   const pixelsVersion = useEditor((s) => s.pixelsVersion)
+  const hiddenInks = useEditor((s) => s.hiddenInks)
   const selection = useEditor((s) => s.selection)
   const tool = useEditor((s) => s.tool)
   const preview = useEditor((s) => s.preview)
@@ -129,11 +133,19 @@ export function Stage({ onDropFiles, focus, onToggleFocus }: {
         c.height = height
       }
       const g = c.getContext('2d')!
-      g.clearRect(0, 0, width, height)
-      g.drawImage(editor.composite(), 0, 0)
+      const src = editor.composite()
+      if (!hiddenInks.length) {
+        g.clearRect(0, 0, width, height)
+        g.drawImage(src, 0, 0)
+        return
+      }
+      // Hidden inks: draw the art without them so the shirt shows through. The layers stay as they are.
+      const px = readPixels(src)
+      hideInks(px, hiddenInks.map(hexToRgba), designInks(src).map((k) => k.rgba))
+      g.putImageData(px, 0, 0)
     })
     return () => cancelAnimationFrame(id)
-  }, [pixelsVersion, width, height])
+  }, [pixelsVersion, width, height, hiddenInks])
 
   // MARK: Overlay: selection, boxes, brush
 

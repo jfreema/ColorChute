@@ -46,6 +46,8 @@ export interface EditorState extends DocState {
   cropRect: Rect | null
   /** Bumped when any layer's pixels change, to redraw */
   pixelsVersion: number
+  /** Inks hidden on screen only, so the shirt shows through. Saves and exports still have them. */
+  hiddenInks: string[]
   dirty: boolean
   canUndo: boolean
   canRedo: boolean
@@ -103,6 +105,7 @@ export class Editor {
       },
       cropRect: null,
       pixelsVersion: 0,
+      hiddenInks: [],
       dirty: false,
       canUndo: false,
       canRedo: false,
@@ -223,7 +226,7 @@ export class Editor {
     this.history.clear()
     this.set({
       name, width, height, dpi, layers: [layer], activeId: layer.id, selection: null, cropRect: null,
-      pixelsVersion: this.state.pixelsVersion + 1, dirty: false,
+      pixelsVersion: this.state.pixelsVersion + 1, dirty: false, hiddenInks: [],
     })
   }
 
@@ -236,6 +239,7 @@ export class Editor {
     this.set({
       name: name.replace(/\.[^.]+$/, ''), width: bmp.width, height: bmp.height, dpi, layers: [layer],
       activeId: layer.id, selection: null, cropRect: null, pixelsVersion: this.state.pixelsVersion + 1, dirty: false,
+      hiddenInks: [],
     })
     bmp.close()
   }
@@ -624,12 +628,15 @@ export class Editor {
     this.set({
       name: p.name || 'Untitled', width: p.width, height: p.height, dpi: p.dpi || DEFAULT_DPI, layers,
       activeId: layers.some((l) => l.id === p.activeId) ? p.activeId : layers[0].id, selection: null, cropRect: null,
-      pixelsVersion: this.state.pixelsVersion + 1, dirty: false,
+      pixelsVersion: this.state.pixelsVersion + 1, dirty: false, hiddenInks: [],
       ...(p.preview ? { preview: { ...this.state.preview, ...p.preview } } : {}),
     })
   }
 
-  /** Swaps in another document, as when opening a saved color option. Clears the history. */
+  /**
+   * Swaps in another document, as when opening a saved color option. Clears the history. Hidden inks stay hidden, so
+   * you can compare options without, say, the outline.
+   */
   replaceDocument(d: Pick<DocState, 'width' | 'height' | 'dpi' | 'layers' | 'activeId'>) {
     this.history.clear()
     this.set({ ...d, selection: null, cropRect: null, pixelsVersion: this.state.pixelsVersion + 1, dirty: false })
@@ -637,6 +644,24 @@ export class Editor {
 
   setName(name: string) {
     this.set({ name })
+  }
+
+  // MARK: Hidden inks
+
+  /** Hides or shows an ink on screen. Doesn't touch the layers, so it isn't an edit and can't be undone. */
+  toggleInk(hex: string) {
+    const h = this.state.hiddenInks
+    this.set({ hiddenInks: h.includes(hex) ? h.filter((x) => x !== hex) : [...h, hex] })
+  }
+
+  showAllInks() {
+    if (this.state.hiddenInks.length) this.set({ hiddenInks: [] })
+  }
+
+  /** Forgets hidden inks that are no longer in the art, as after swapping one */
+  keepHiddenInks(present: string[]) {
+    const h = this.state.hiddenInks.filter((x) => present.includes(x))
+    if (h.length !== this.state.hiddenInks.length) this.set({ hiddenInks: h })
   }
 
   markSaved(name?: string) {

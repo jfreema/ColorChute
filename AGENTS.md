@@ -57,6 +57,9 @@ Fake values are fine: insert a user and a session (`token_hash` is the SHA-256 h
   3-ink rule.
 - **The stage places everything in screen pixels from document coordinates** (`left = pan + x * zoom`), not with a CSS
   transform, so the shirt SVGs and the canvas stay sharp at any zoom.
+- **Changing sample art needs a version bump.** The service worker serves files cache-first, so bump `ART_VERSION`
+  in `samples.ts` when a mask in `public/samples/` changes, and bump `SEEDED_KEY` so libraries get the new art.
+  Samples people have saved over are migrated layer by layer (see `upgradeCannon`), never replaced.
 - **Epic's numbers live in `printSpecs.ts`** and come from the Shirt Image Spec and the Team Logo and Icon Spec in
   the Shirt Graphics project. Change them there.
 - **Commits are authored as Jared** (`Jared Freeman <143004867+jfreema@users.noreply.github.com>`) with no

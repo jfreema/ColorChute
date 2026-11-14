@@ -2,16 +2,16 @@ import { api } from '../lib/api'
 import { idb } from '../lib/idb'
 import { getAccount, markSamplesSeeded } from './account'
 import { ctx2d, makeCanvas } from './doc'
-import { ColorOption, Design, refreshLibrary, thumbnailOf, toBlob } from './designs'
+import { ColorOption, Design, refreshLibrary, renderOption, thumbnailOf, toBlob } from './designs'
 import { cloudStore } from './storage'
 
 /**
  * Built-in sample designs, added to everyone's library on first run. Each layer ships as a white mask
  * (opaque or clear, no soft edges) and is tinted to its ink for each color option.
  */
-const SEEDED_KEY = 'colorchute.samples.v2'
-/** Set by the first version, whose sample used inks that aren't on Epic's wheel */
-const SEEDED_V1_KEY = 'colorchute.samples.v1'
+const SEEDED_KEY = 'colorchute.samples.v3'
+/** Set by earlier versions: v1 used inks that aren't on Epic's wheel, v2 had a plain cannon instead of a bat */
+const OLDER_KEYS = ['colorchute.samples.v1', 'colorchute.samples.v2']
 
 type Ink = 'outline' | 'battle' | 'tank' | 'baseball'
 
@@ -63,7 +63,14 @@ function markSeeded() {
   }
 }
 
-async function loadMask(url: string): Promise<ImageBitmap> {
+/**
+ * Bump when a mask's art changes. The service worker serves files cache-first, so a new URL is the only way returning
+ * visitors get the new art.
+ */
+const ART_VERSION = 3
+
+async function loadMask(ink: Ink): Promise<ImageBitmap> {
+  const url = `${BATTLE_BASEBALL.dir}${ink}.png?v=${ART_VERSION}`
   const res = await fetch(url)
   if (!res.ok) throw new Error(`Could not load ${url}`)
   return createImageBitmap(await res.blob())
@@ -71,7 +78,7 @@ async function loadMask(url: string): Promise<ImageBitmap> {
 
 async function buildBattleBaseball(): Promise<Design> {
   const s = BATTLE_BASEBALL
-  const masks = await Promise.all(s.layers.map((l) => loadMask(`${s.dir}${l.ink}.png`)))
+  const masks = await Promise.all(s.layers.map((l) => loadMask(l.ink)))
   const now = Date.now()
   const top = s.layers[s.layers.length - 1]
   // Two full-size canvases reused for every layer, so phones don't run out of memory
@@ -104,12 +111,94 @@ async function buildBattleBaseball(): Promise<Design> {
   return { id: s.id, name: s.name, createdAt: now, updatedAt: now, options }
 }
 
+/** A fingerprint of which pixels are opaque, to tell a mask apart from one someone has drawn on */
+function maskSignature(px: Uint8ClampedArray) {
+  let h = 2166136261, n = 0
+  for (let i = 3, p = 0; i < px.length; i += 4, p++) {
+    if (px[i] > 127) {
+      h = Math.imul(h ^ p, 16777619)
+      n++
+    }
+  }
+  return `${n}:${h >>> 0}`
+}
+
+/** The layers that changed when the cannon became a bat, as the v1 and v2 samples shipped them */
+const PLAIN_CANNON: Record<string, { sig: string; ink: Ink }> = {
+  'bb-tank': { sig: '832437:1735841766', ink: 'tank' },
+  'bb-outline': { sig: '2723966:2971948493', ink: 'outline' },
+}
+
+/**
+ * Gives a sample someone has already saved over the bat cannon, keeping their options, names and colors. Only a
+ * layer that is still the old mask in one flat ink is redrawn, so anything they painted on stays as it was.
+ */
+async function upgradeCannon(d: Design): Promise<Design | null> {
+  const s = BATTLE_BASEBALL
+  const masks = new Map<string, ImageBitmap>()
+  const work = makeCanvas(s.width, s.height)
+  const w = ctx2d(work)
+  let changed = false
+  try {
+    for (const o of d.options) {
+      if (o.width !== s.width || o.height !== s.height) continue
+      // Both layers or neither, so a bat outline never sits around the old cannon
+      const inks: { layer: ColorOption['layers'][number]; ink: Ink; color: string }[] = []
+      for (const l of o.layers) {
+        const old = PLAIN_CANNON[l.id]
+        if (!old) continue
+        const bmp = await createImageBitmap(l.png)
+        w.globalCompositeOperation = 'copy'
+        w.drawImage(bmp, 0, 0)
+        bmp.close()
+        const px = w.getImageData(0, 0, s.width, s.height).data
+        if (maskSignature(px) !== old.sig) break
+        let ink = -1
+        let flat = true
+        for (let i = 0; i < px.length; i += 4) {
+          if (px[i + 3] <= 127) continue
+          const rgb = (px[i] << 16) | (px[i + 1] << 8) | px[i + 2]
+          if (ink < 0) ink = rgb
+          else if (rgb !== ink) {
+            flat = false
+            break
+          }
+        }
+        if (!flat || ink < 0) break
+        inks.push({ layer: l, ink: old.ink, color: `#${ink.toString(16).padStart(6, '0')}` })
+      }
+      if (inks.length !== Object.keys(PLAIN_CANNON).length) continue
+      for (const { layer, ink, color } of inks) {
+        let mask = masks.get(ink)
+        if (!mask) {
+          mask = await loadMask(ink)
+          masks.set(ink, mask)
+        }
+        w.globalCompositeOperation = 'copy'
+        w.drawImage(mask, 0, 0)
+        w.globalCompositeOperation = 'source-in'
+        w.fillStyle = color
+        w.fillRect(0, 0, s.width, s.height)
+        layer.png = await toBlob(work)
+      }
+      const art = await renderOption(o)
+      o.thumbnail = await thumbnailOf(art)
+      art.width = 0
+      changed = true
+    }
+  } finally {
+    for (const m of masks.values()) m.close()
+    work.width = 0
+  }
+  return changed ? d : null
+}
+
 const untouched = (d: Design | undefined): d is Design => !!d && d.updatedAt === d.createdAt
 
 /**
  * Adds the sample designs once to this browser, and once to each approved account. If someone deletes one later,
  * it stays deleted. A sample nobody has saved over in this browser is replaced by the current version, so it picks
- * up fixes like Epic's print colors.
+ * up fixes like Epic's print colors. One they have saved over keeps their options and gets just the art changes.
  */
 export function seedSamples() {
   seeding ??= seedAll().finally(() => (seeding = null))
@@ -121,8 +210,15 @@ let seeding: Promise<void> | null = null
 async function seedAll() {
   if (!seeded()) {
     const existing = await idb.get<Design>(BATTLE_BASEBALL.id)
-    const deleted = !existing && seeded(SEEDED_V1_KEY)
-    if (!deleted && (!existing || untouched(existing))) await idb.put(await buildBattleBaseball())
+    const deleted = !existing && OLDER_KEYS.some((k) => seeded(k))
+    if (!deleted) {
+      if (!existing || untouched(existing)) await idb.put(await buildBattleBaseball())
+      else {
+        // If this fails (say, offline) it stays unmarked and tries again next visit
+        const upgraded = await upgradeCannon(existing)
+        if (upgraded) await idb.put(upgraded)
+      }
+    }
     markSeeded()
     await refreshLibrary()
   }

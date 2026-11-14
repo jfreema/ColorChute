@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
-  contentBounds, cropPixels, diffBounds, dominantColors, makePixels, paintMask, regionAt, replaceColor, replaceInk,
+  contentBounds, cropPixels, diffBounds, dominantColors, hideInks, makePixels, paintMask, regionAt, replaceColor, replaceInk,
   resizeNearest, strokeLine, Pixels,
 } from '../editor/pixels'
 import { RGBA } from '../lib/color'
@@ -109,5 +109,17 @@ describe('geometry', () => {
     const colors = dominantColors(px)
     expect(colors.map((c) => c.hex)).toEqual(['#C80000', '#0000C8'])
     expect(colors[0].share).toBeCloseTo(0.6, 2)
+  })
+})
+
+describe('hideInks', () => {
+  it('clears only the hidden ink, and leaves near-but-different inks alone', () => {
+    // Linen, Butter (close to linen), Black and a transparent pixel
+    const px = makePixels(4, 1)
+    px.data.set([230, 218, 191, 255, 248, 224, 142, 255, 0, 0, 0, 255, 0, 0, 0, 0])
+    const linen: RGBA = [230, 218, 191, 255], butter: RGBA = [248, 224, 142, 255], black: RGBA = [0, 0, 0, 255]
+    const n = hideInks(px, [linen], [linen, butter, black])
+    expect(n).toBe(1)
+    expect(Array.from(px.data)).toEqual([0, 0, 0, 0, 248, 224, 142, 255, 0, 0, 0, 255, 0, 0, 0, 0])
   })
 })

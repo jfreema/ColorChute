@@ -1,5 +1,6 @@
 import { EPIC_MATCH, nearestEpicColor } from '../lib/palettes'
 import { EPIC } from '../lib/printSpecs'
+import { ctx2d, makeCanvas, readPixels } from './doc'
 import { ColorCount, dominantColors, Pixels } from './pixels'
 
 export type CheckStatus = 'pass' | 'warn' | 'block'
@@ -13,6 +14,18 @@ export interface Check {
 /** The design's inks: solid colors covering at least 0.5% of the art, so antialiased edges don't count */
 export function inkColors(px: Pixels): ColorCount[] {
   return dominantColors(px, 12, 24, EPIC.inkMinShare)
+}
+
+/** The inks in flattened art, from a copy shrunk without smoothing so no in-between colors appear */
+export function designInks(src: HTMLCanvasElement): ColorCount[] {
+  const k = Math.min(1, 500 / Math.max(src.width, src.height))
+  const c = makeCanvas(Math.max(1, Math.round(src.width * k)), Math.max(1, Math.round(src.height * k)))
+  const g = ctx2d(c)
+  g.imageSmoothingEnabled = false
+  g.drawImage(src, 0, 0, c.width, c.height)
+  const inks = inkColors(readPixels(c))
+  c.width = 0
+  return inks
 }
 
 interface ArtStats {
