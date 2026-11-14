@@ -1,6 +1,8 @@
 name = "colorchute"
 main = "worker/index.ts"
 compatibility_date = "2026-11-01"
+# Keep variables set in the Cloudflare dashboard. Without this, every deploy deletes plain-text variables.
+keep_vars = true
 
 # The built site. Only /api/ runs the Worker; everything else is served straight from here.
 [assets]
