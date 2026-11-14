@@ -40,13 +40,22 @@ const STATUS = {
 /** Sign in, or the signed-in account with its menu */
 function Account({ onAdmin }: { onAdmin: () => void }) {
   const loaded = useAccount((s) => s.loaded)
+  const reachable = useAccount((s) => s.reachable)
   const configured = useAccount((s) => s.configured)
   const user = useAccount((s) => s.user)
   const pending = useAccount((s) => s.pending)
   const [open, setOpen] = useState(false)
   const ref = useOutsideClose(open, () => setOpen(false))
-  if (!loaded || (!user && !configured)) return null
   if (!user) {
+    // Always there, so nobody hunts for it; greyed out with the reason when sign-in can't work right now
+    const why = !loaded ? null : !reachable ? 'Can’t reach ColorChute' : !configured ? 'Sign-in not set up yet' : null
+    if (!loaded || why) {
+      return (
+        <button className="btn" disabled title={why ?? 'Checking sign-in'}>
+          <LogIn size={15} /> {why ?? 'Sign in'}
+        </button>
+      )
+    }
     return (
       <button className="btn green" onClick={signIn} title="Sign in with Google to edit and save designs">
         <LogIn size={15} /> Sign in to edit
