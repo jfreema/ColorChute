@@ -404,6 +404,13 @@ select.field.small { height: 26px; padding: 0 4px; font-size: 12px; max-width: 1
   display: none;
 }
 .option-card:hover .x { display: inline-flex; }
+.option-card .ren { position: absolute; right: 30px; top: 3px; display: none; }
+.option-card:hover .ren { display: inline-flex; }
+.option-card .meta .nm.editable { cursor: text; }
+.option-card .meta .nm.editable:hover { text-decoration: underline dotted; }
+.header .pill-btn { cursor: pointer; font: inherit; font-weight: 800; font-size: 11px; }
+.header .pill-btn:hover { filter: brightness(1.08); }
+.header .option-name { width: 150px; height: 26px; font-size: 12px; }
 .option-card.add {
   width: auto;
   align-items: center;
@@ -514,6 +521,7 @@ select.field.small { height: 26px; padding: 0 4px; font-size: 12px; max-width: 1
 .dialog .head { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
 .dialog .foot { display: flex; gap: 8px; justify-content: flex-end; align-items: center; margin-top: 14px; }
 .dialog .foot .hint { color: #fff; opacity: 0.85; }
+.dialog-text { color: #fff; font-weight: 700; line-height: 1.45; margin: 6px 2px 10px; }
 .preset {
   display: flex;
   align-items: center;
@@ -592,7 +600,6 @@ pre.note {
 
 /* MARK: Accounts */
 
-.dialog-text { color: #fff; font-weight: 700; line-height: 1.45; margin: 6px 2px 10px; }
 .avatar {
   display: inline-flex;
   align-items: center;
