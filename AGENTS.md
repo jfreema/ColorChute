@@ -65,6 +65,9 @@ Fake values are fine: insert a user and a session (`token_hash` is the SHA-256 h
   puts the canvas top at the top of the print area and exports trim to the art, so art sits at the top of the canvas.
   The sample masks are only as tall as their art and are drawn at the top; `growCanvas` moved older copies, in the
   browser and in accounts, onto the full canvas.
+- **Mockups show an adult M as worn** (`UNITS_PER_INCH` in `src/lib/shirt.ts`): about 16 in of chest faces forward,
+  so 11 in art covers about two thirds of it, as in Jared's photos of real Epic prints. Don't scale it to the 20 in
+  flat width; Jared found that too small.
 - **Epic's numbers live in `printSpecs.ts`** and come from the Shirt Image Spec and the Team Logo and Icon Spec in
   the Shirt Graphics project. Change them there.
 - **Commits are authored as Jared** (`Jared Freeman <143004867+jfreema@users.noreply.github.com>`) with no

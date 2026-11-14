@@ -6,9 +6,20 @@ import { hexToRgba } from './color'
 
 export const SHIRT_W = 1000
 export const SHIRT_H = 1100
-/** Viewbox units per printed inch, for an adult large about 21.5 in across the chest */
-export const UNITS_PER_INCH = 25
-export const PRINT_TOP = 225
+/**
+ * The mockups show an adult medium as it looks worn. Gildan's 5000 in M is 20 in across laid flat, but near the
+ * armpits the sides wrap around the body, so only about 16 in of the chest faces forward. Both shirt drawings are
+ * about 540 units across just below the armpits, so that is the 16 in. Photos of real Epic prints show 11 in art
+ * covering about two thirds of the visible chest, and this matches them.
+ */
+const CHEST_UNITS = 540
+const VISIBLE_CHEST_IN = 16
+/** Viewbox units per printed inch */
+export const UNITS_PER_INCH = CHEST_UNITS / VISIBLE_CHEST_IN
+/** Bottom of the front collar on both drawings */
+const COLLAR_BOTTOM = 150
+/** Prints start 3 in below the collar */
+export const PRINT_TOP = COLLAR_BOTTOM + 3 * UNITS_PER_INCH
 export const PRINT_CENTER_X = 500
 /** Epic's 11 in max, for fitting */
 export const PRINT_MAX = 11 * UNITS_PER_INCH
