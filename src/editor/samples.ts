@@ -13,9 +13,24 @@ const SEEDED_KEY = 'colorchute.samples.v4'
  */
 const OLDER_KEYS = ['colorchute.samples.v1', 'colorchute.samples.v2', 'colorchute.samples.v3']
 
+/** Set once the text-only Battle Baseball has been added */
+const TEXT_KEY = 'colorchute.samples.text.v1'
+
 type Ink = 'outline' | 'battle' | 'tank' | 'baseball'
 
-const BATTLE_BASEBALL = {
+interface Sample {
+  id: string
+  name: string
+  dir: string
+  width: number
+  height: number
+  dpi: number
+  /** Bottom to top */
+  layers: { id: string; name: string; ink: Ink }[]
+  options: { id: string; name: string; shirt: string; inks: Partial<Record<Ink, string>> }[]
+}
+
+const BATTLE_BASEBALL: Sample = {
   id: 'sample-battle-baseball',
   name: 'Battle Baseball',
   dir: `${import.meta.env.BASE_URL}samples/battle-baseball/`,
@@ -23,13 +38,12 @@ const BATTLE_BASEBALL = {
   width: 3300,
   height: 2524,
   dpi: 300,
-  // Bottom to top
   layers: [
     { id: 'bb-outline', name: 'Outline', ink: 'outline' },
     { id: 'bb-baseball', name: 'BASEBALL', ink: 'baseball' },
     { id: 'bb-tank', name: 'Tank', ink: 'tank' },
     { id: 'bb-battle', name: 'BATTLE', ink: 'battle' },
-  ] as { id: string; name: string; ink: Ink }[],
+  ],
   // Inks are Epic print colors; shirts are blanks Epic sells
   options: [
     {
@@ -44,7 +58,29 @@ const BATTLE_BASEBALL = {
       id: 'bb-green', name: 'Military green', shirt: '#3E3F1F', // A4 Military Green
       inks: { outline: '#000000', battle: '#FA4616', tank: '#F8E08E', baseball: '#F8E08E' }, // Black, Orange, Butter
     },
-  ] as { id: string; name: string; shirt: string; inks: Record<Ink, string> }[],
+  ],
+}
+
+/** The same lettering without the tank, BASEBALL straight under BATTLE. One option; people add their own. */
+const BATTLE_BASEBALL_TEXT: Sample = {
+  id: 'sample-battle-baseball-text',
+  name: 'Battle Baseball (text only)',
+  dir: `${import.meta.env.BASE_URL}samples/battle-baseball-text/`,
+  // 11 × 4.54 in at 300 DPI
+  width: 3300,
+  height: 1363,
+  dpi: 300,
+  layers: [
+    { id: 'bt-outline', name: 'Outline', ink: 'outline' },
+    { id: 'bt-baseball', name: 'BASEBALL', ink: 'baseball' },
+    { id: 'bt-battle', name: 'BATTLE', ink: 'battle' },
+  ],
+  options: [
+    {
+      id: 'bt-red', name: 'Red & linen', shirt: '#B9B6A7', // Epic cool tee Silver
+      inks: { outline: '#000000', battle: '#AF0011', baseball: '#E6DABF' }, // Black, Red, Linen
+    },
+  ],
 }
 
 function seeded(key = SEEDED_KEY) {
@@ -55,9 +91,9 @@ function seeded(key = SEEDED_KEY) {
   }
 }
 
-function markSeeded() {
+function markSeeded(key = SEEDED_KEY) {
   try {
-    localStorage.setItem(SEEDED_KEY, '1')
+    localStorage.setItem(key, '1')
   } catch {
     // Without storage the sample's fixed id still stops it being added twice
   }
@@ -69,17 +105,16 @@ function markSeeded() {
  */
 const ART_VERSION = 4
 
-async function loadMask(ink: Ink): Promise<ImageBitmap> {
-  const url = `${BATTLE_BASEBALL.dir}${ink}.png?v=${ART_VERSION}`
+async function loadMask(ink: Ink, s: Sample = BATTLE_BASEBALL): Promise<ImageBitmap> {
+  const url = `${s.dir}${ink}.png?v=${ART_VERSION}`
   const res = await fetch(url)
   if (!res.ok) throw new Error(`Could not load ${url}`)
   return createImageBitmap(await res.blob())
 }
 
-async function buildBattleBaseball(): Promise<Design> {
-  const s = BATTLE_BASEBALL
-  const masks = await Promise.all(s.layers.map((l) => loadMask(l.ink)))
-  const now = Date.now()
+/** Builds a sample's design from its masks. `now` sets its dates, which order the library (newest first). */
+async function buildSample(s: Sample, now = Date.now()): Promise<Design> {
+  const masks = await Promise.all(s.layers.map((l) => loadMask(l.ink, s)))
   const top = s.layers[s.layers.length - 1]
   // Two full-size canvases reused for every layer, so phones don't run out of memory
   const work = makeCanvas(s.width, s.height)
@@ -93,14 +128,14 @@ async function buildBattleBaseball(): Promise<Design> {
       w.globalCompositeOperation = 'copy'
       w.drawImage(masks[i], 0, 0)
       w.globalCompositeOperation = 'source-in'
-      w.fillStyle = o.inks[l.ink]
+      w.fillStyle = o.inks[l.ink] ?? '#000000'
       w.fillRect(0, 0, s.width, s.height)
       layers.push({ id: l.id, name: l.name, visible: true, opacity: 1, png: await toBlob(work) })
       f.drawImage(work, 0, 0)
     }
     options.push({
       id: o.id, name: o.name, updatedAt: now, width: s.width, height: s.height, dpi: s.dpi, activeId: top.id,
-      swatches: [...new Set([o.inks.battle, o.inks.baseball, o.inks.tank, o.inks.outline])],
+      swatches: [...new Set(s.layers.map((l) => o.inks[l.ink] ?? '#000000').reverse())],
       shirtColor: o.shirt,
       thumbnail: await thumbnailOf(flat),
       layers,
@@ -218,23 +253,35 @@ async function upgradeArt(d: Design): Promise<Design | null> {
 }
 
 /**
- * Adds the sample designs once. If someone deletes one later, it stays deleted. A sample nobody has saved over is
- * replaced by the current version, so it picks up fixes like Epic's print colors. One they have saved over keeps
- * their options and gets just the art changes.
+ * Adds the sample designs once each. If someone deletes one later, it stays deleted. A Battle Baseball nobody has saved
+ * over is replaced by the current version, so it picks up fixes like Epic's print colors. One they have saved over
+ * keeps their options and gets just the art changes.
  */
 export async function seedSamples() {
-  if (seeded()) return
-  const existing = await idb.get<Design>(BATTLE_BASEBALL.id)
-  const untouched = existing && existing.updatedAt === existing.createdAt
-  const deleted = !existing && OLDER_KEYS.some((k) => seeded(k))
-  if (!deleted) {
-    if (!existing || untouched) await idb.put(await buildBattleBaseball())
-    else {
-      // If this fails (say, offline) it stays unmarked and tries again next visit
-      const upgraded = await upgradeArt(existing)
-      if (upgraded) await idb.put(upgraded)
+  let added = false
+  if (!seeded()) {
+    const existing = await idb.get<Design>(BATTLE_BASEBALL.id)
+    const untouched = existing && existing.updatedAt === existing.createdAt
+    const deleted = !existing && OLDER_KEYS.some((k) => seeded(k))
+    if (!deleted) {
+      if (!existing || untouched) await idb.put(await buildSample(BATTLE_BASEBALL))
+      else {
+        // If this fails (say, offline) it stays unmarked and tries again next visit
+        const upgraded = await upgradeArt(existing)
+        if (upgraded) await idb.put(upgraded)
+      }
     }
+    markSeeded()
+    added = true
   }
-  markSeeded()
-  await refreshLibrary()
+  if (!seeded(TEXT_KEY)) {
+    if (!(await idb.get<Design>(BATTLE_BASEBALL_TEXT.id))) {
+      // Dated just before Battle Baseball, so it sits right after it in the library
+      const bb = await idb.get<Design>(BATTLE_BASEBALL.id)
+      await idb.put(await buildSample(BATTLE_BASEBALL_TEXT, (bb?.updatedAt ?? Date.now()) - 1))
+    }
+    markSeeded(TEXT_KEY)
+    added = true
+  }
+  if (added) await refreshLibrary()
 }
