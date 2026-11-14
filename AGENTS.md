@@ -31,18 +31,25 @@ Fake values are fine: insert a user and a session (`token_hash` is the SHA-256 h
 |---|---|
 | Pure pixel code, unit tested | `src/editor/pixels.ts` (flood fill, paint, replace color, resize, colors), `selection.ts` (masks, grow, shrink, outline), `checks.ts` (Epic checks, order note), `src/lib/png.ts` (DPI chunk), `zip.ts` |
 | Editor state | `src/editor/store.ts` (`Editor`: document, tools, actions; `useEditor` hook), `history.ts` (undo), `doc.ts` (layers) |
-| Saved designs | `src/editor/designs.ts` (library, color options), `storage.ts` (this browser's IndexedDB, or the account on the server), `samples.ts`, `src/lib/idb.ts` |
-| Accounts | `src/editor/account.ts` (sign-in pop-up, who can save), `worker/index.ts` (the API: Google OAuth, sessions, approvals, designs in D1) |
+| Saved designs | `src/editor/designs.ts` (library, color options), `storage.ts` (the account on the server, public designs, and old IndexedDB copies), `src/lib/idb.ts` |
+| Accounts | `src/editor/account.ts` (sign-in pop-up, who can edit), `worker/index.ts` (the API: Google OAuth, sessions, approvals, designs and public designs in D1) |
 | Export | `src/editor/exporting.ts` (presets, mockup, Epic package) |
 | Specs and palettes | `src/lib/printSpecs.ts`, `src/lib/palettes.ts`, `src/lib/shirt.ts` (shirt SVGs) |
 | UI | `src/App.tsx` (shortcuts, files), `src/components/*`, `src/styles.css` |
 
 ## Things that bite
 
-- **Saving needs an approved account.** Every write in `designs.ts` goes through `requireSave`, which shows the
-  sign-in or waiting-for-approval dialog and retries once the person can save. Signed out, the library is this
-  browser's IndexedDB and read only. Admins come from the `ADMIN_EMAILS` secret, so nobody gets admin by signing in
-  first.
+- **Editing needs an approved account** (Jared, 2026-11-14). Everyone else gets the view-only app (`viewOnly` in
+  `App.tsx`): no tools, no ink or layer panels, only public designs, their color options and the preview settings.
+  Every write in `designs.ts` goes through `requireSave`, which shows the sign-in or waiting-for-approval dialog and
+  retries once the person can save. Admins come from the `ADMIN_EMAILS` secret, so nobody gets admin by signing in
+  first. The editor runs in the browser, so view-only is a front door, not a lock; the server is what guards saving.
+- **Public designs are separate from my designs.** An admin's globe toggle in the library adds the design to the
+  `public_designs` table, under a random id so the owner's account id stays out of public addresses. Anyone can list
+  them and load their images (`/api/public/...`). Opening one that isn't yours and saving makes your own copy with all
+  its options (`mine()` in `designs.ts`). These replaced the old built-in samples that were copied into every library.
+- **Dashboard variables need `keep_vars`.** The Google values were once plain-text variables and a deploy deleted
+  them, which turned sign-in off. Keep `keep_vars = true` in `wrangler.toml`, and add these as type Secret.
 - **Sign-in runs in a pop-up** so unsaved canvases survive it. The callback page tells the editor over a
   `BroadcastChannel`, because Google's pages cut `window.opener`.
 - **D1 values top out at 2 MB**, so layer PNGs are stored in 1 MB chunks. A save uploads only the images that changed,
@@ -57,14 +64,8 @@ Fake values are fine: insert a user and a session (`token_hash` is the SHA-256 h
   3-ink rule.
 - **The stage places everything in screen pixels from document coordinates** (`left = pan + x * zoom`), not with a CSS
   transform, so the shirt SVGs and the canvas stay sharp at any zoom.
-- **Changing sample art needs a version bump.** The service worker serves files cache-first, so bump `ART_VERSION`
-  in `samples.ts` when a mask in `public/samples/` changes, bump `SEEDED_KEY` so libraries get the new art, and put
-  the new mask's signature at the front of `ART_HISTORY`.
-  Samples people have saved over are migrated layer by layer (see `upgradeArt` and `ART_HISTORY`), never replaced.
 - **Shirt canvases are 11 × 11 in** (`SHIRT_CANVAS` in `printSpecs.ts`, 3300 × 3300 px), Jared's rule. The preview
   puts the canvas top at the top of the print area and exports trim to the art, so art sits at the top of the canvas.
-  The sample masks are only as tall as their art and are drawn at the top; `growCanvas` moved older copies, in the
-  browser and in accounts, onto the full canvas.
 - **Mockups show an adult M as worn** (`UNITS_PER_INCH` in `src/lib/shirt.ts`): about 16 in of chest faces forward,
   so 11 in art covers about two thirds of it, as in Jared's photos of real Epic prints. Don't scale it to the 20 in
   flat width; Jared found that too small.

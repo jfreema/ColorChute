@@ -11,12 +11,13 @@ import { EPIC } from '../lib/printSpecs'
 import { ColorInput } from './ColorInput'
 import { ArrowDown, ArrowUp, Copy, Eye, EyeOff, ImagePlus, Merge, Plus, Trash2 } from './icons'
 
-export function Sidebar({ onPlaceImage }: { onPlaceImage: () => void }) {
+export function Sidebar({ onPlaceImage, viewOnly }: { onPlaceImage: () => void; viewOnly?: boolean }) {
+  // Looking only: just the preview settings, which change nothing about the design
   return (
     <aside className="sidebar">
-      <ColorsPanel />
-      <InksPanel />
-      <LayersPanel onPlaceImage={onPlaceImage} />
+      {!viewOnly && <ColorsPanel />}
+      {!viewOnly && <InksPanel />}
+      {!viewOnly && <LayersPanel onPlaceImage={onPlaceImage} />}
       <PreviewPanel />
     </aside>
   )

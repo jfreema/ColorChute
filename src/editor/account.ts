@@ -3,8 +3,9 @@ import { api } from '../lib/api'
 import { editor } from './store'
 
 /**
- * Who is signed in. Anyone can use the editor; saving designs needs a Google account that the admin approved.
- * Sign-in runs in a pop-up window so unsaved work in the editor is never lost to a page change.
+ * Who is signed in. Editing and saving designs needs a Google account that the admin approved (Jared, 2026-11-14);
+ * everyone else can only look at the public designs. Sign-in runs in a pop-up window so unsaved work in the editor
+ * is never lost to a page change.
  */
 export interface User {
   id: string
@@ -67,16 +68,23 @@ export function onAccountChange(fn: () => void) {
 
 export const canSave = () => state.user?.status === 'approved'
 
-export async function loadAccount() {
-  try {
-    const r = await api<{ configured: boolean; user: User | null; pending?: number }>('/api/me')
-    set({ loaded: true, reachable: true, configured: r.configured, user: r.user, pending: r.pending ?? 0 })
-  } catch {
-    set({ loaded: true, reachable: false })
-  }
+let loading: Promise<void> | null = null
+
+/** Asks the server who is signed in. Calls made while one is running share it. */
+export function loadAccount(): Promise<void> {
+  loading ??= (async () => {
+    try {
+      const r = await api<{ configured: boolean; user: User | null; pending?: number }>('/api/me')
+      set({ loaded: true, reachable: true, configured: r.configured, user: r.user, pending: r.pending ?? 0 })
+    } catch {
+      // Offline or the server is down: keep whoever was signed in, so a blip doesn't lock someone out mid-design
+      set({ loaded: true, reachable: false })
+    }
+  })().finally(() => (loading = null))
+  return loading
 }
 
-/** True when saving is allowed. Otherwise shows why not, and runs `retry` once the person is approved. */
+/** True when editing and saving are allowed. Otherwise shows why not, and runs `retry` once the person is approved. */
 export function requireSave(retry?: () => void): boolean {
   if (canSave()) return true
   resume = retry ?? null
@@ -90,15 +98,12 @@ export function requireSave(retry?: () => void): boolean {
 /** Asks the server again, as from "Check again" while waiting for approval */
 export async function checkApproval() {
   await loadAccount()
-  if (canSave()) {
-    const next = resume
-    resume = null
-    set({ prompt: null })
-    editor.toast("You're approved. Saving works now.")
-    next?.()
-  } else {
-    editor.toast('Still waiting for approval')
-  }
+  if (!canSave()) return editor.toast('Still waiting for approval')
+  const next = resume
+  resume = null
+  set({ prompt: null })
+  editor.toast("You're approved. Editing and saving work now.")
+  next?.()
 }
 
 export function closePrompt() {
@@ -110,7 +115,8 @@ export function showPrompt(prompt: AccountPrompt) {
   set({ prompt })
 }
 
-export function signIn() {
+/** Opens Google sign-in. False when the browser blocked the window and there was unsaved work to protect. */
+export function signIn(): boolean {
   const w = 480, h = 640
   const left = Math.round(window.screenX + (window.outerWidth - w) / 2)
   const top = Math.round(window.screenY + (window.outerHeight - h) / 2)
@@ -118,22 +124,21 @@ export function signIn() {
   if (popup) {
     set({ prompt: null })
     watching = true
-    return
+    return true
   }
   // Pop-ups blocked: going to Google in this tab is fine only when there's nothing to lose
-  if (!editor.state.dirty) location.href = '/api/auth/login'
-  else editor.toast('Your browser blocked the sign-in window. Allow pop-ups for this site, then try again.')
+  if (!editor.state.dirty) {
+    location.href = '/api/auth/login'
+    return true
+  }
+  editor.toast('Your browser blocked the sign-in window. Allow pop-ups for this site, then try again.')
+  return false
 }
 
 export async function signOut() {
   await api('/api/auth/logout', { method: 'POST' }).catch(() => {})
   resume = null
   set({ user: null, pending: 0, prompt: null })
-}
-
-/** Records that the sample designs were added to this account */
-export function markSamplesSeeded() {
-  if (state.user) set({ user: { ...state.user, samplesSeeded: true } })
 }
 
 export function setPendingCount(pending: number) {

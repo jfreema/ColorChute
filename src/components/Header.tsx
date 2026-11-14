@@ -3,7 +3,7 @@ import { signIn, signOut, showPrompt, useAccount } from '../editor/account'
 import { renameOption, useDesigns } from '../editor/designs'
 import { editor, useEditor } from '../editor/store'
 import { Avatar } from './Avatar'
-import { ChevronDown, Download, FilePlus, FolderOpen, Library, LogIn, LogOut, Redo2, Save, Scaling, ShieldCheck, Undo2 } from './icons'
+import { ChevronDown, Download, Eye, FilePlus, FolderOpen, Library, LogIn, LogOut, Redo2, Save, Scaling, ShieldCheck, Undo2 } from './icons'
 import { Logo } from './Logo'
 
 export interface HeaderActions {
@@ -32,9 +32,9 @@ function useOutsideClose(open: boolean, close: () => void) {
 }
 
 const STATUS = {
-  approved: 'Can save designs',
+  approved: 'Can edit and save designs',
   pending: 'Waiting for approval',
-  denied: 'No access to save',
+  denied: 'No access to edit',
 }
 
 /** Sign in, or the signed-in account with its menu */
@@ -48,14 +48,14 @@ function Account({ onAdmin }: { onAdmin: () => void }) {
   if (!loaded || (!user && !configured)) return null
   if (!user) {
     return (
-      <button className="btn green" onClick={signIn} title="Sign in with Google to save designs">
-        <LogIn size={15} /> Sign in
+      <button className="btn green" onClick={signIn} title="Sign in with Google to edit and save designs">
+        <LogIn size={15} /> Sign in to edit
       </button>
     )
   }
   const items = [
     ...(user.admin ? [{ label: 'Admin', hint: pending ? `${pending} waiting` : undefined, icon: <ShieldCheck size={15} />, onClick: onAdmin }] : []),
-    ...(user.status !== 'approved' ? [{ label: 'Why can’t I save?', icon: undefined, hint: undefined, onClick: () => showPrompt(user.status === 'pending' ? 'pending' : 'denied') }] : []),
+    ...(user.status !== 'approved' ? [{ label: 'Why can’t I edit?', icon: undefined, hint: undefined, onClick: () => showPrompt(user.status === 'pending' ? 'pending' : 'denied') }] : []),
     { label: 'Sign out', icon: <LogOut size={15} />, hint: undefined, onClick: () => signOut() },
   ]
   return (
@@ -107,7 +107,44 @@ function Menu({ items }: { items: { label: string; hint?: string; onClick: () =>
   )
 }
 
-export function Header({ actions }: { actions: HeaderActions }) {
+/** The header for someone who can only look: the design's name, the library, and a way to sign in */
+function ViewOnlyHeader({ actions }: { actions: HeaderActions }) {
+  const name = useEditor((s) => s.name)
+  const optionName = useDesigns((s) => s.options.find((o) => o.id === s.optionId)?.name)
+  const user = useAccount((s) => s.user)
+  return (
+    <header className="header">
+      <span className="icon-chip" style={{ background: '#fff', width: 30, height: 30, borderRadius: 8 }}>
+        <Logo size={23} />
+      </span>
+      <span className="title">ColorChute</span>
+      <span className="design-title" title={name}>{name}</span>
+      {optionName && <span className="pill" style={{ background: 'var(--sky)' }}>{optionName}</span>}
+      {user && user.status !== 'approved' ? (
+        <button className="pill pill-btn view-pill" title="Why you can’t edit yet"
+          onClick={() => showPrompt(user.status === 'pending' ? 'pending' : 'denied')}>
+          <Eye size={13} /> {user.status === 'pending' ? 'Waiting for approval' : 'View only'}
+        </button>
+      ) : (
+        <span className="pill view-pill" title="Sign in with an approved account to edit and save designs">
+          <Eye size={13} /> View only
+        </span>
+      )}
+      <span className="grow" />
+      <button className="btn green" onClick={actions.library} title="Public designs anyone can look at">
+        <Library size={15} /> Designs
+      </button>
+      <Account onAdmin={actions.admin} />
+    </header>
+  )
+}
+
+export function Header({ actions, viewOnly }: { actions: HeaderActions; viewOnly?: boolean }) {
+  if (viewOnly) return <ViewOnlyHeader actions={actions} />
+  return <EditHeader actions={actions} />
+}
+
+function EditHeader({ actions }: { actions: HeaderActions }) {
   const name = useEditor((s) => s.name)
   const dirty = useEditor((s) => s.dirty)
   const canUndo = useEditor((s) => s.canUndo)

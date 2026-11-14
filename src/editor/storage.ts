@@ -3,8 +3,9 @@ import { idb, persistStorage } from '../lib/idb'
 import type { ColorOption, Design } from './designs'
 
 /**
- * Where saved designs live. Signed out, the library is this browser's IndexedDB (read only, since saving needs an
- * approved account). Approved accounts save to the server, so designs follow them to any computer.
+ * Where saved designs live. Approved accounts save to the server, so designs follow them to any computer. Public
+ * designs, the ones an admin marked "Available to public", are read only and anyone can open them. This browser's
+ * IndexedDB only holds designs saved before accounts existed, offered to copy into an account.
  */
 export interface DesignSummary {
   id: string
@@ -14,6 +15,11 @@ export interface DesignSummary {
   thumb: string
   swatches: string[]
   shirt?: string
+  /** One of my designs that an admin made public */
+  public?: boolean
+  /** A public design that's one of mine, and its id among my designs */
+  mine?: boolean
+  designId?: string
 }
 
 export interface DesignStore {
@@ -98,7 +104,10 @@ export const cloudStore: DesignStore = {
       // Changed on another computer since it was opened here
       if (c && sig(toMeta(c)) !== sig(m)) cache.delete(m.id)
     }
-    return designs.map((m) => summary(m, m.options[0] ? blobUrl(m.id, `${m.options[0].id}/thumb`, m.options[0].updatedAt) : ''))
+    return designs.map((m) => ({
+      ...summary(m, m.options[0] ? blobUrl(m.id, `${m.options[0].id}/thumb`, m.options[0].updatedAt) : ''),
+      public: (m as PublicMeta).public,
+    }))
   },
 
   async get(id) {
@@ -158,4 +167,54 @@ export const cloudStore: DesignStore = {
 export function clearCloudCache() {
   cache.clear()
   onServer.clear()
+}
+
+/** Makes one of my designs public, or not. Admins only. */
+export async function setDesignPublic(id: string, pub: boolean) {
+  await sendJson(`/api/designs/${id}/public`, { public: pub }, 'PUT')
+}
+
+// MARK: Public designs
+
+type PublicMeta = DesignMeta & { mine?: boolean; designId?: string; public?: boolean }
+
+const publicMeta = new Map<string, PublicMeta>()
+const publicCache = new Map<string, Design>()
+const publicBlobUrl = (id: string, key: string, v: number) => `/api/public/designs/${id}/blobs/${key}?v=${v}`
+
+/** Designs an admin made public: anyone can list and open them, nobody can change them through here */
+export const publicStore = {
+  async list(): Promise<DesignSummary[]> {
+    const { designs } = await api<{ designs: PublicMeta[] }>('/api/public/designs')
+    for (const m of designs) {
+      const had = publicMeta.get(m.id)
+      if (had && sig(had) !== sig(m)) publicCache.delete(m.id)
+      publicMeta.set(m.id, m)
+    }
+    return designs.map((m) => ({
+      ...summary(m, m.options[0] ? publicBlobUrl(m.id, `${m.options[0].id}/thumb`, m.options[0].updatedAt) : ''),
+      mine: m.mine, designId: m.designId,
+    }))
+  },
+
+  async get(id: string): Promise<Design | undefined> {
+    const hit = publicCache.get(id)
+    if (hit) return hit
+    if (!publicMeta.has(id)) await publicStore.list()
+    const m = publicMeta.get(id)
+    if (!m) return undefined
+    const options = await Promise.all(
+      m.options.map(async (o): Promise<ColorOption> => {
+        const [thumbnail, ...pngs] = await Promise.all([
+          fetchBlob(publicBlobUrl(id, `${o.id}/thumb`, o.updatedAt)),
+          ...o.layers.map((l) => fetchBlob(publicBlobUrl(id, `${o.id}/${l.id}`, o.updatedAt))),
+        ])
+        return { ...o, thumbnail, layers: o.layers.map((l, i) => ({ ...l, png: pngs[i] })) }
+      }),
+    )
+    const { mine: _m, designId: _d, public: _p, ...rest } = m
+    const d: Design = { ...rest, id, options }
+    publicCache.set(id, d)
+    return d
+  },
 }

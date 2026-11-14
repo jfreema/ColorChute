@@ -81,6 +81,13 @@ async function route(req: Request, env: Env, url: URL): Promise<Response> {
   let r = p.match(new RegExp(`^/api/admin/users/(${ID})$`))
   if (r && m === 'POST') return adminUpdate(req, env, requireAdmin(user, env), r[1])
 
+  // Public designs: anyone can look, only their owner (an admin) can change whether they're public
+  if (p === '/api/public/designs' && m === 'GET') return listPublic(env, user)
+  r = p.match(new RegExp(`^/api/public/designs/(${ID})/blobs/(${ID})/(${ID})$`))
+  if (r && m === 'GET') return getPublicBlob(env, r[1], `${r[2]}/${r[3]}`)
+  r = p.match(new RegExp(`^/api/designs/(${ID})/public$`))
+  if (r && m === 'PUT') return setPublic(req, env, requireApproved(requireAdmin(user, env), env), r[1])
+
   if (p === '/api/designs' && m === 'GET') return listDesigns(env, requireApproved(user, env))
   r = p.match(new RegExp(`^/api/designs/(${ID})$`))
   if (r) {
@@ -119,6 +126,11 @@ function schema(env: Env) {
     env.DB.prepare(`CREATE TABLE IF NOT EXISTS blobs (
       user_id TEXT NOT NULL, design_id TEXT NOT NULL, key TEXT NOT NULL, chunk INTEGER NOT NULL,
       data BLOB NOT NULL, PRIMARY KEY (user_id, design_id, key, chunk))`),
+    // Designs an admin marked "Available to public". Anyone can view them, signed in or not. The random id keeps the
+    // owner's account id out of public addresses.
+    env.DB.prepare(`CREATE TABLE IF NOT EXISTS public_designs (
+      id TEXT PRIMARY KEY, user_id TEXT NOT NULL, design_id TEXT NOT NULL, published_at INTEGER NOT NULL,
+      UNIQUE (user_id, design_id))`),
   ]).catch((e) => {
     ready = null
     throw e
@@ -308,9 +320,39 @@ function rowToDesign(r: { id: string; meta: string }) {
 }
 
 async function listDesigns(env: Env, u: UserRow) {
-  const { results } = await env.DB.prepare('SELECT id, meta FROM designs WHERE user_id = ? ORDER BY updated_at DESC')
-    .bind(u.id).all<{ id: string; meta: string }>()
-  return json({ designs: results.map(rowToDesign) })
+  const { results } = await env.DB.prepare(
+    `SELECT d.id, d.meta, p.id IS NOT NULL AS pub FROM designs d
+     LEFT JOIN public_designs p ON p.user_id = d.user_id AND p.design_id = d.id
+     WHERE d.user_id = ? ORDER BY d.updated_at DESC`,
+  ).bind(u.id).all<{ id: string; meta: string; pub: number }>()
+  return json({ designs: results.map((r) => ({ ...rowToDesign(r), public: r.pub === 1 })) })
+}
+
+/** Every public design, newest first. The owner's own come back marked, with their real id, so they open as theirs. */
+async function listPublic(env: Env, u: UserRow | null) {
+  const { results } = await env.DB.prepare(
+    `SELECT p.id, p.user_id, d.id AS design_id, d.meta FROM public_designs p
+     JOIN designs d ON d.user_id = p.user_id AND d.id = p.design_id ORDER BY d.updated_at DESC`,
+  ).all<{ id: string; user_id: string; design_id: string; meta: string }>()
+  return json({
+    designs: results.map((r) => {
+      const mine = u?.id === r.user_id
+      return { ...JSON.parse(r.meta), id: r.id, ...(mine ? { mine: true, designId: r.design_id } : {}) }
+    }),
+  })
+}
+
+async function setPublic(req: Request, env: Env, u: UserRow, id: string) {
+  const { public: pub } = await readJson<{ public?: unknown }>(req, 1000)
+  if (typeof pub !== 'boolean') throw new HttpError(400, 'Say whether the design should be public')
+  const d = await env.DB.prepare('SELECT id FROM designs WHERE user_id = ? AND id = ?').bind(u.id, id).first()
+  if (!d) throw new HttpError(404, 'That design is gone')
+  await (pub
+    ? env.DB.prepare('INSERT OR IGNORE INTO public_designs (id, user_id, design_id, published_at) VALUES (?, ?, ?, ?)')
+      .bind(randomToken(9), u.id, id, Date.now())
+    : env.DB.prepare('DELETE FROM public_designs WHERE user_id = ? AND design_id = ?').bind(u.id, id)
+  ).run()
+  return json({ ok: true })
 }
 
 async function getDesign(env: Env, u: UserRow, id: string) {
@@ -351,6 +393,7 @@ async function deleteDesign(env: Env, u: UserRow, id: string) {
   await env.DB.batch([
     env.DB.prepare('DELETE FROM designs WHERE user_id = ? AND id = ?').bind(u.id, id),
     env.DB.prepare('DELETE FROM blobs WHERE user_id = ? AND design_id = ?').bind(u.id, id),
+    env.DB.prepare('DELETE FROM public_designs WHERE user_id = ? AND design_id = ?').bind(u.id, id),
   ])
   return json({ ok: true })
 }
@@ -375,6 +418,20 @@ async function getBlob(env: Env, u: UserRow, designId: string, key: string) {
   const { results } = await env.DB.prepare(
     'SELECT data FROM blobs WHERE user_id = ? AND design_id = ? AND key = ? ORDER BY chunk',
   ).bind(u.id, designId, key).all<{ data: ArrayBuffer | number[] }>()
+  return pngResponse(results, 'private')
+}
+
+async function getPublicBlob(env: Env, publicId: string, key: string) {
+  const { results } = await env.DB.prepare(
+    `SELECT b.data FROM public_designs p
+     JOIN blobs b ON b.user_id = p.user_id AND b.design_id = p.design_id
+     WHERE p.id = ? AND b.key = ? ORDER BY b.chunk`,
+  ).bind(publicId, key).all<{ data: ArrayBuffer | number[] }>()
+  return pngResponse(results, 'public')
+}
+
+/** Joins an image's chunks back into one PNG */
+function pngResponse(results: { data: ArrayBuffer | number[] }[], cache: 'private' | 'public') {
   if (!results.length) throw new HttpError(404, 'Image not found')
   const parts = results.map((r) => (r.data instanceof ArrayBuffer ? new Uint8Array(r.data) : Uint8Array.from(r.data)))
   const out = new Uint8Array(parts.reduce((n, p) => n + p.length, 0))
@@ -384,7 +441,7 @@ async function getBlob(env: Env, u: UserRow, designId: string, key: string) {
     at += p.length
   }
   // URLs carry the option's save time, so a cached copy is never stale
-  return new Response(out, { headers: { 'Content-Type': 'image/png', 'Cache-Control': 'private, max-age=31536000, immutable' } })
+  return new Response(out, { headers: { 'Content-Type': 'image/png', 'Cache-Control': `${cache}, max-age=31536000, immutable` } })
 }
 
 // MARK: Helpers

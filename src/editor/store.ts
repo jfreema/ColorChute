@@ -66,6 +66,15 @@ function loadSettings(): Partial<Pick<EditorState, 'options' | 'preview' | 'prim
   }
 }
 
+/** False the first time this browser opens ColorChute, before it has saved any settings */
+export const hadSettings = (() => {
+  try {
+    return localStorage.getItem(SETTINGS_KEY) !== null
+  } catch {
+    return false
+  }
+})()
+
 export interface ProjectFile {
   app: 'ColorChute'
   version: 1

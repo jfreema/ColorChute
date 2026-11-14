@@ -4,12 +4,16 @@ import { useEditor } from '../editor/store'
 import { Pencil, Plus, X } from './icons'
 
 /** The open design's saved color options, side by side, for comparing schemes */
-export function OptionStrip({ confirmDiscard, onSaveAsOption }: {
+export function OptionStrip({ confirmDiscard, onSaveAsOption, readOnly }: {
   confirmDiscard: (then: () => void) => void
   /** Asks for a name, then saves the current colors as a new option */
   onSaveAsOption: () => void
+  /** Looking only: options can be switched, not renamed, deleted or added */
+  readOnly?: boolean
 }) {
   const options = useDesigns((s) => s.options)
+  // A public design's options belong to its owner; saving makes your own copy, which you can then change
+  const locked = useDesigns((s) => s.openFrom === 'public') || readOnly
   const optionId = useDesigns((s) => s.optionId)
   const busy = useDesigns((s) => s.busy)
   const dirty = useEditor((s) => s.dirty)
@@ -30,7 +34,7 @@ export function OptionStrip({ confirmDiscard, onSaveAsOption }: {
             tabIndex={0}
             className={`card option-card ${o.id === optionId ? 'active' : ''}`}
             onClick={() => o.id !== optionId && !busy && confirmDiscard(() => openOption(o.id))}
-            onDoubleClick={() => setRenaming(o.id)}
+            onDoubleClick={() => !locked && setRenaming(o.id)}
             onKeyDown={(e) => e.key === 'Enter' && o.id !== optionId && confirmDiscard(() => openOption(o.id))}
           >
             <div className="thumb checker" style={o.shirt ? { background: o.shirt } : undefined}><img src={o.thumb} alt="" /></div>
@@ -55,10 +59,10 @@ export function OptionStrip({ confirmDiscard, onSaveAsOption }: {
                 />
               ) : (
                 <div
-                  className={`nm ${o.id === optionId ? 'editable' : ''}`}
-                  title={o.id === optionId ? `${o.name} (click to rename)` : o.name}
+                  className={`nm ${o.id === optionId && !locked ? 'editable' : ''}`}
+                  title={o.id === optionId && !locked ? `${o.name} (click to rename)` : o.name}
                   onClick={(e) => {
-                    if (o.id !== optionId) return
+                    if (o.id !== optionId || locked) return
                     e.stopPropagation()
                     setRenaming(o.id)
                   }}
@@ -68,7 +72,7 @@ export function OptionStrip({ confirmDiscard, onSaveAsOption }: {
               )}
               <div className="dots">{o.swatches.slice(0, 6).map((c) => <span key={c} style={{ background: c }} />)}</div>
             </div>
-            {renaming !== o.id && (
+            {!locked && renaming !== o.id && (
               <button
                 className="btn small icon ren"
                 title="Rename this option"
@@ -81,7 +85,7 @@ export function OptionStrip({ confirmDiscard, onSaveAsOption }: {
                 <Pencil size={12} />
               </button>
             )}
-            {deleting === o.id ? (
+            {locked ? null : deleting === o.id ? (
               <button
                 className="btn small red x"
                 style={{ display: 'inline-flex' }}
@@ -110,11 +114,13 @@ export function OptionStrip({ confirmDiscard, onSaveAsOption }: {
             )}
           </div>
         ))}
-        <button className="card option-card add" disabled={busy} onClick={onSaveAsOption}
-          title="Save the colors you have now as another option to compare">
-          <Plus size={16} />
-          {options.length ? 'Save as new option' : 'Save first option'}
-        </button>
+        {!readOnly && (
+          <button className="card option-card add" disabled={busy} onClick={onSaveAsOption}
+            title="Save the colors you have now as another option to compare">
+            <Plus size={16} />
+            {options.length ? 'Save as new option' : 'Save first option'}
+          </button>
+        )}
       </div>
     </div>
   )

@@ -14,14 +14,13 @@ import { Stage } from './components/Stage'
 import { Toolbar, TOOLS } from './components/Toolbar'
 import { Dialog } from './components/Dialog'
 import { LogIn, Save } from './components/icons'
-import { canSave, loadAccount, onAccountChange, useAccount } from './editor/account'
+import { canSave, loadAccount, onAccountChange, requireSave, useAccount } from './editor/account'
 import { readPixels } from './editor/doc'
-import { detachDesign, getDesigns, refreshLibrary, save } from './editor/designs'
+import { detachDesign, getDesigns, openDesign, refreshLibrary, save } from './editor/designs'
 import { clearCloudCache } from './editor/storage'
-import { seedSamples } from './editor/samples'
 import { download } from './editor/exporting'
 import { contentBounds } from './editor/pixels'
-import { editor, ProjectFile, useEditor } from './editor/store'
+import { editor, hadSettings, ProjectFile, useEditor } from './editor/store'
 import { slug } from './lib/printSpecs'
 import { readPngDpi } from './lib/png'
 
@@ -66,8 +65,26 @@ export function App() {
     })
   }, [])
   const placeInput = useRef<HTMLInputElement>(null)
-  // Re-renders the unsaved-changes question when sign-in changes what Save can do
-  useAccount((s) => s.user?.status)
+  // Editing needs an approved account; everyone else can look at public designs. The dev server has no API, so it
+  // edits freely.
+  const approved = useAccount((s) => s.user?.status === 'approved')
+  const devOffline = useAccount((s) => import.meta.env.DEV && s.loaded && !s.reachable)
+  const viewOnly = !approved && !devOffline
+  const viewRef = useRef(viewOnly)
+  viewRef.current = viewOnly
+
+  // Looking only, the hand tool pans; editing again picks the paint bucket back up
+  // (It waits for the account, so an approved person's tool isn't swapped while the page loads.)
+  const accountLoaded = useAccount((s) => s.loaded)
+  useEffect(() => {
+    if (!accountLoaded) return
+    if (viewOnly) editor.setTool('hand')
+    else if (editor.state.tool === 'hand') editor.setTool('bucket')
+  }, [viewOnly, accountLoaded])
+  // Someone looking for the first time sees designs on the realistic shirt
+  useEffect(() => {
+    if (accountLoaded && viewOnly && !hadSettings) editor.setPreview({ mode: 'realistic' })
+  }, [viewOnly, accountLoaded])
 
   useEffect(() => {
     if (!toast) return
@@ -77,13 +94,17 @@ export function App() {
   }, [toast])
 
   useEffect(() => {
-    const load = () => refreshLibrary().then(seedSamples).catch(() => {})
-    loadAccount().then(load)
+    const load = () => refreshLibrary().catch(() => {})
+    loadAccount().then(load).then(() => {
+      // Someone just looking gets the newest public design up front instead of an empty canvas
+      const first = getDesigns().publicLibrary[0]
+      if (viewRef.current && first && !getDesigns().designId && isBlank()) openDesign(first.id, 'public')
+    })
     const stop = onAccountChange(() => {
       if (!canSave()) {
         // Signed out: forget the account's designs, and don't save into one from here
         clearCloudCache()
-        if (getDesigns().source === 'cloud') detachDesign()
+        if (getDesigns().openFrom === 'mine') detachDesign()
       }
       load()
     })
@@ -124,6 +145,7 @@ export function App() {
 
   const addFiles = useCallback(
     async (files: FileList | File[]) => {
+      if (viewRef.current) return void requireSave()
       for (const f of Array.from(files)) {
         if (/\.(colorchute|json)$/i.test(f.name)) confirmDiscard(() => openFile(f))
         else if (!f.type.startsWith('image/')) editor.toast(`${f.name} isn't an image`)
@@ -173,6 +195,8 @@ export function App() {
       const mod = e.metaKey || e.ctrlKey
       const k = e.key.toLowerCase()
       const s = editor.state
+      // Looking only: previews, focus and zoom
+      if (viewOnly && !(mod ? ['0', '=', '+', '-'].includes(k) : !e.altKey && ['1', '2', '3', 'f'].includes(k))) return
       if (mod) {
         const run = (fn: () => void) => {
           e.preventDefault()
@@ -227,16 +251,16 @@ export function App() {
   const close = () => setModal(null)
 
   return (
-    <div className={`app ${focus ? 'focus' : ''}`}>
-      {!focus && <Header actions={actions} />}
+    <div className={`app ${focus ? 'focus' : ''} ${viewOnly ? 'view-only' : ''}`}>
+      {!focus && <Header actions={actions} viewOnly={viewOnly} />}
       <main className="main">
-        <Toolbar />
+        {!viewOnly && <Toolbar />}
         <section className="center">
-          {!focus && <OptionsBar />}
+          {!focus && !viewOnly && <OptionsBar />}
           <Stage onDropFiles={addFiles} focus={focus} onToggleFocus={toggleFocus} />
-          {!focus && <OptionStrip confirmDiscard={confirmDiscard} onSaveAsOption={actions.saveAsOption} />}
+          {!focus && <OptionStrip confirmDiscard={confirmDiscard} onSaveAsOption={actions.saveAsOption} readOnly={viewOnly} />}
         </section>
-        {!focus && <Sidebar onPlaceImage={actions.placeImage} />}
+        {!focus && <Sidebar onPlaceImage={actions.placeImage} viewOnly={viewOnly} />}
       </main>
 
       <input ref={openInput} type="file" hidden accept="image/*,.colorchute,.json"

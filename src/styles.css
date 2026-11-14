@@ -274,6 +274,11 @@ select.field.small { height: 26px; padding: 0 4px; font-size: 12px; max-width: 1
 /* Focus mode: only the tools and the canvas */
 .app.focus { grid-template-rows: 1fr; }
 .app.focus .main { grid-template-columns: 48px minmax(0, 1fr); padding-top: 10px; }
+/* Looking only: no tools column */
+.app.view-only .main { grid-template-columns: minmax(0, 1fr) 262px; }
+.app.view-only.focus .main { grid-template-columns: minmax(0, 1fr); }
+.header .design-title { color: #fff; font: 800 15px/1.2 var(--font); padding: 4px 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 260px; }
+.pill.view-pill { background: #fff; display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; flex: none; }
 .sidebar { overflow-y: auto; min-height: 0; padding: 0 6px 8px 2px; margin-right: -6px; }
 .sidebar::-webkit-scrollbar { width: 8px; }
 .sidebar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.4); border-radius: 4px; }
@@ -502,6 +507,7 @@ select.field.small { height: 26px; padding: 0 4px; font-size: 12px; max-width: 1
 }
 .icon-btn:hover { background: var(--hover); }
 .icon-btn:disabled { opacity: 0.3; cursor: default; }
+.icon-btn.on { background: var(--green); color: var(--ink); box-shadow: inset 0 0 0 2px var(--ink); }
 
 /* MARK: Dialogs and toast */
 
@@ -598,6 +604,7 @@ pre.note {
   body { overflow: auto; }
   .app { height: auto; min-height: 100%; }
   .main { grid-template-columns: 48px minmax(0, 1fr); }
+  .app.view-only .main { grid-template-columns: minmax(0, 1fr); }
   .sidebar { grid-column: 1 / -1; overflow: visible; margin: 0; padding: 0; }
   .stage { height: 62vh; flex: none; }
   .header { flex-wrap: wrap; }
@@ -649,3 +656,4 @@ pre.note {
   .user-row { flex-wrap: wrap; }
   .user-row .acts { width: 100%; justify-content: flex-end; }
 }
+

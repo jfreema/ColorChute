@@ -5,7 +5,7 @@ import { readPixels } from './doc'
 import { epicColorName } from '../lib/palettes'
 import { inkColors } from './checks'
 import { contentBounds, dominantColors } from './pixels'
-import { cloudStore, DesignStore, DesignSummary, localStore, urlFor } from './storage'
+import { cloudStore, DesignSummary, localStore, publicStore, setDesignPublic, urlFor } from './storage'
 import { editor } from './store'
 
 /** One saved color scheme of a design: all its layers as they were */
@@ -39,16 +39,20 @@ export interface DesignsState {
   optionId: string | null
   designName: string
   options: { id: string; name: string; swatches: string[]; thumb: string; shirt?: string }[]
+  /** Whether the open design is one of mine or a public one. Saving a public one saves my own copy. */
+  openFrom: 'mine' | 'public'
+  /** My designs, for approved accounts */
   library: DesignSummary[]
-  /** Where the library came from: this browser, or the signed-in account */
-  source: 'local' | 'cloud'
+  /** Designs an admin made public, which everyone sees */
+  publicLibrary: DesignSummary[]
   /** Designs saved in this browser that aren't in the account yet, offered to copy in */
   localOnly: string[]
   busy: boolean
 }
 
 let state: DesignsState = {
-  designId: null, optionId: null, designName: '', options: [], library: [], source: 'local', localOnly: [], busy: false,
+  designId: null, optionId: null, designName: '', options: [], openFrom: 'mine', library: [], publicLibrary: [],
+  localOnly: [], busy: false,
 }
 const listeners = new Set<() => void>()
 
@@ -57,11 +61,8 @@ function set(patch: Partial<DesignsState>) {
   for (const fn of listeners) fn()
 }
 
-/** Approved accounts save to the server; everyone else sees this browser's designs, read only */
-const activeStore = (): DesignStore => (canSave() ? cloudStore : localStore)
-
-/** Built-in samples, which every account gets its own copy of instead of copying them in */
-export const SAMPLE_IDS = new Set(['sample-battle-baseball'])
+/** The built-in samples browsers used to get. Their old copies aren't offered for copying into an account. */
+export const SAMPLE_IDS = new Set(['sample-battle-baseball', 'sample-battle-baseball-text'])
 
 export function useDesigns<T>(select: (s: DesignsState) => T): T {
   return useSyncExternalStore(
@@ -147,11 +148,26 @@ function summarize(d: Design) {
   })
 }
 
-/** The open design. One opened from this browser before signing in is saved into the account from here on. */
+/** The open design, as it was last saved */
 async function current(): Promise<Design | undefined> {
   if (!state.designId) return undefined
-  const store = activeStore()
-  return (await store.get(state.designId)) ?? (store === cloudStore ? localStore.get(state.designId) : undefined)
+  if (state.openFrom === 'public') return publicStore.get(state.designId)
+  if (!canSave()) return undefined
+  return (await cloudStore.get(state.designId)) ?? localStore.get(state.designId)
+}
+
+/** The open design, ready to save into my account: a public one becomes my own copy, with all its options */
+async function mine(): Promise<Design | undefined> {
+  const d = await current()
+  if (!d || state.openFrom === 'mine') return d
+  const now = Date.now()
+  return { ...d, id: newId(), createdAt: now, updatedAt: now, options: [...d.options] }
+}
+
+/** After saving: the design that was saved is now the open one, and it's mine */
+function saved(d: Design) {
+  set({ openFrom: 'mine' })
+  summarize(d)
 }
 
 async function busy<T>(fn: () => Promise<T>): Promise<T | undefined> {
@@ -167,25 +183,28 @@ async function busy<T>(fn: () => Promise<T>): Promise<T | undefined> {
 }
 
 export async function refreshLibrary() {
-  const store = activeStore()
-  try {
-    const library = await store.list()
-    let localOnly: string[] = []
-    if (store === cloudStore) {
-      const inAccount = new Set(library.map((d) => d.id))
-      localOnly = (await localStore.list()).map((d) => d.id).filter((id) => !inAccount.has(id) && !SAMPLE_IDS.has(id))
-    }
-    set({ library, localOnly, source: store.kind })
-  } catch (e) {
+  const [pub, own] = await Promise.allSettled([publicStore.list(), canSave() ? cloudStore.list() : Promise.resolve([])])
+  if (pub.status === 'fulfilled') set({ publicLibrary: pub.value })
+  if (own.status === 'rejected') {
+    const e = own.reason
     editor.toast(e instanceof Error ? e.message : "Couldn't load your designs")
+    return
   }
+  const library = own.value
+  let localOnly: string[] = []
+  if (canSave()) {
+    const inAccount = new Set(library.map((d) => d.id))
+    localOnly = (await localStore.list().catch(() => [])).map((d) => d.id)
+      .filter((id) => !inAccount.has(id) && !SAMPLE_IDS.has(id))
+  }
+  set({ library, localOnly })
 }
 
 /** Saves into the open color option, making the design (and a first option) if this is its first save */
 export async function save(designName?: string): Promise<boolean> {
   if (!requireSave(() => save(designName))) return false
   const ok = await busy(async () => {
-    let d = await current()
+    let d = await mine()
     if (!d) {
       const now = Date.now()
       d = { id: newId(), name: designName || editor.state.name || 'Untitled design', createdAt: now, updatedAt: now,
@@ -199,7 +218,7 @@ export async function save(designName?: string): Promise<boolean> {
     d.updatedAt = Date.now()
     await cloudStore.put(d)
     set({ optionId: option.id })
-    summarize(d)
+    saved(d)
     editor.markSaved(d.name)
     editor.toast(`Saved ${option.name}`)
     refreshLibrary()
@@ -234,7 +253,7 @@ export function suggestOptionName(): string {
 export function saveAsNewOption(name?: string) {
   if (!requireSave(() => saveAsNewOption(name))) return
   return busy(async () => {
-    let d = await current()
+    let d = await mine()
     if (!d) {
       const now = Date.now()
       d = { id: newId(), name: editor.state.name || 'Untitled design', createdAt: now, updatedAt: now, options: [] }
@@ -244,7 +263,7 @@ export function saveAsNewOption(name?: string) {
     d.updatedAt = Date.now()
     await cloudStore.put(d)
     set({ optionId: option.id })
-    summarize(d)
+    saved(d)
     editor.markSaved(d.name)
     editor.toast(`Saved ${option.name}`)
     refreshLibrary()
@@ -262,15 +281,25 @@ export function openOption(optionId: string) {
   })
 }
 
-export function openDesign(designId: string) {
+/** Opens one of my designs, or a public one */
+export function openDesign(designId: string, from: 'mine' | 'public' = 'mine') {
   return busy(async () => {
-    const d = await activeStore().get(designId)
+    const d = from === 'public' ? await publicStore.get(designId) : await cloudStore.get(designId)
     if (!d || !d.options.length) return
     editor.showAllInks()
     await loadOption(d.options[0])
-    set({ optionId: d.options[0].id })
+    set({ optionId: d.options[0].id, openFrom: from })
     summarize(d)
     editor.markSaved(d.name)
+  })
+}
+
+/** Makes one of my designs public so everyone, signed in or not, can look at it. Admins only. */
+export function setPublic(designId: string, pub: boolean) {
+  return busy(async () => {
+    await setDesignPublic(designId, pub)
+    editor.toast(pub ? 'Everyone can see this design now' : 'Only you can see this design now')
+    await refreshLibrary()
   })
 }
 
@@ -278,7 +307,7 @@ export function renameOption(optionId: string, name: string) {
   if (!requireSave(() => renameOption(optionId, name))) return
   return busy(async () => {
     const d = await current()
-    if (!d) return
+    if (!d || state.openFrom === 'public') return
     d.options = d.options.map((o) => (o.id === optionId ? { ...o, name } : o))
     await cloudStore.put(d)
     summarize(d)
@@ -289,7 +318,7 @@ export function deleteOption(optionId: string) {
   if (!requireSave(() => deleteOption(optionId))) return
   return busy(async () => {
     const d = await current()
-    if (!d) return
+    if (!d || state.openFrom === 'public') return
     if (d.options.length <= 1) return editor.toast('A design keeps at least one option. Delete the design instead.')
     d.options = d.options.filter((o) => o.id !== optionId)
     d.updatedAt = Date.now()
@@ -355,7 +384,7 @@ export function copyLocalDesigns() {
 
 /** Forgets the open design, so the next save starts a new one. The pixels stay. */
 export function detachDesign() {
-  set({ designId: null, optionId: null, options: [], designName: '' })
+  set({ designId: null, optionId: null, options: [], designName: '', openFrom: 'mine' })
 }
 
 /** Every option of the open design, for exporting them all */
