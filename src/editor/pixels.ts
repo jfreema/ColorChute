@@ -119,6 +119,37 @@ export function replaceColor(px: Pixels, from: RGBA, to: RGBA, tolerance: number
   return n
 }
 
+/**
+ * Changes one ink to `to`: every pixel closer to `from` than to any of the design's `others`, and within
+ * `maxDistance` of it (RGB distance, so slight noise around the ink still moves with it). Other inks never change,
+ * however near they are. Returns how many pixels changed.
+ */
+export function replaceInk(px: Pixels, from: RGBA, others: RGBA[], to: RGBA, selection: Mask | null, maxDistance = 60): number {
+  const d = px.data
+  const max2 = maxDistance * maxDistance
+  const rest = others.filter((o) => o[0] !== from[0] || o[1] !== from[1] || o[2] !== from[2])
+  let n = 0
+  for (let p = 0, i = 0; i < d.length; p++, i += 4) {
+    if (d[i + 3] === 0 || (selection && !selection[p])) continue
+    const r = d[i], g = d[i + 1], b = d[i + 2]
+    const own = (r - from[0]) ** 2 + (g - from[1]) ** 2 + (b - from[2]) ** 2
+    if (own > max2) continue
+    let mine = true
+    for (const o of rest) {
+      if ((r - o[0]) ** 2 + (g - o[1]) ** 2 + (b - o[2]) ** 2 < own) {
+        mine = false
+        break
+      }
+    }
+    if (!mine) continue
+    d[i] = to[0]
+    d[i + 1] = to[1]
+    d[i + 2] = to[2]
+    n++
+  }
+  return n
+}
+
 /** A filled circle of `color` at (cx, cy), inside the selection. Returns the box it covers, clipped to the image. */
 export function stamp(px: Pixels, cx: number, cy: number, size: number, color: RGBA, selection: Mask | null): Rect | null {
   const { width: w, height: h, data: d } = px
