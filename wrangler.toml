@@ -13,4 +13,4 @@ run_worker_first = ["/api/*"]
 [[d1_databases]]
 binding = "DB"
 database_name = "colorchute"
-database_id = "00000000-0000-0000-0000-000000000000"
+database_id = "5a3c5402-2c0c-4945-b8e7-f04e0894296e"
