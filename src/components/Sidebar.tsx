@@ -4,8 +4,8 @@ import { ColorCount } from '../editor/pixels'
 import { editor, useEditor } from '../editor/store'
 import { isHex, normalizeHex } from '../lib/color'
 import {
-  BOARD_COLORS, EPIC_MATCH, epicColorName, INK_COLLECTIONS, inkCollection, inkColorName, nearestEpicColor, SHIRT_COLLECTIONS,
-  shirtCollection, shirtColorName,
+  BOARD_COLORS, EPIC_MATCH, epicColorName, INK_COLLECTIONS, inkCollection, inkColorName, nearestEpicColor,
+  shirtCollection, shirtCollectionGroups, shirtColorName,
 } from '../lib/palettes'
 import { EPIC } from '../lib/printSpecs'
 import { ColorInput } from './ColorInput'
@@ -358,7 +358,10 @@ function PreviewPanel() {
                 <b className="grow">Shirt color</b>
                 <select className="field small" value={collection.id} title={collection.shirt} aria-label="Shirt colors from"
                   onChange={(e) => editor.setPreview({ shirtCollection: e.target.value })}>
-                  {SHIRT_COLLECTIONS.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  {shirtCollectionGroups().map((g) => {
+                    const options = g.collections.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)
+                    return g.family ? <optgroup key={g.family} label={g.family}>{options}</optgroup> : options
+                  })}
                 </select>
               </div>
               <div className="swatch-grid shirts">
