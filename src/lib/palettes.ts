@@ -194,7 +194,8 @@ export interface ShirtCollection {
  * split the way Jared asked: colors sold in both adult and youth, then adult-only and youth-only outliers. A4 adds
  * the colors only Epic Sports lists. A4 hexes come from Jiffy's photos, except Athletic Orange, which Ninja's photos
  * show deeper than Jiffy's. ST420 White is lifted a little because its photo's shading makes it look gray.
- * Hot Coral and Pink Raspberry (youth ST350 only) come from Ninja's photos.
+ * Hot Coral and Pink Raspberry (youth ST350 only) come from Ninja's photos. Jerzees Dri-Power is split the same way,
+ * with hexes from Ninja's adult photos (Birch from the youth photo; White lifted to look white).
  */
 const EPIC_COOL: Swatch[] = [
   { name: 'White', hex: '#F4F4F4' },
@@ -333,6 +334,67 @@ const SPORTTEK_ST420: Swatch[] = [
   { name: 'True Navy', hex: '#2F2F41' },
 ]
 
+/** Jerzees Dri-Power colors Ninja POD sells in both adult 29M and youth 29B */
+const JERZEES_29_SHARED: Swatch[] = [
+  { name: 'White', hex: '#F0F0F2' },
+  { name: 'Silver', hex: '#BBB4BB' },
+  { name: 'Athletic Heather', hex: '#9BA1A5' },
+  { name: 'Oxford', hex: '#A4A3A9' },
+  { name: 'Charcoal Grey', hex: '#32373D' },
+  { name: 'Black Heather', hex: '#36454C' },
+  { name: 'Black', hex: '#192124' },
+  { name: 'Cardinal', hex: '#A00429' },
+  { name: 'Maroon', hex: '#581826' },
+  { name: 'True Red', hex: '#D4263E' },
+  { name: 'Vintage Heather Red', hex: '#C72648' },
+  { name: 'Vintage Heather Maroon', hex: '#79394A' },
+  { name: 'Neon Pink', hex: '#FF76A4' },
+  { name: 'Cyber Pink', hex: '#FF3E95' },
+  { name: 'Classic Pink', hex: '#FFD6DE' },
+  { name: 'Deep Purple', hex: '#38275E' },
+  { name: 'Violet', hex: '#5F63AC' },
+  { name: 'Vintage Heather Blue', hex: '#224B7F' },
+  { name: 'Vintage Heather Navy', hex: '#15334F' },
+  { name: 'J. Navy', hex: '#1C2E51' },
+  { name: 'Columbia Blue', hex: '#4C81C3' },
+  { name: 'Light Blue', hex: '#648FB6' },
+  { name: 'Royal', hex: '#01529C' },
+  { name: 'Aquatic Blue', hex: '#01AACB' },
+  { name: 'California Blue', hex: '#007FA0' },
+  { name: 'Scuba Blue', hex: '#48CACC' },
+  { name: 'Jade', hex: '#007F74' },
+  { name: 'Cool Mint', hex: '#5ECDBD' },
+  { name: 'Irish Green Heather', hex: '#1DB585' },
+  { name: 'Kelly', hex: '#009563' },
+  { name: 'Forest Green', hex: '#0C3C2E' },
+  { name: 'Military Green', hex: '#3B4020' },
+  { name: 'Neon Green', hex: '#99D55B' },
+  { name: 'Kiwi', hex: '#70B84C' },
+  { name: 'Safety Green', hex: '#DEE26A' },
+  { name: 'Neon Yellow', hex: '#E5D73C' },
+  { name: 'Gold', hex: '#FFA400' },
+  { name: 'Island Yellow', hex: '#FFD462' },
+  { name: 'Tennessee Orange', hex: '#FE6322' },
+  { name: 'Safety Orange', hex: '#FF5C1C' },
+  { name: 'Burnt Orange', hex: '#FF4E25' },
+]
+
+/** Jerzees Dri-Power colors Ninja POD sells only in adult 29M */
+const JERZEES_29_ADULT_ONLY: Swatch[] = [
+  { name: 'Ash', hex: '#D9D8DD' },
+  { name: 'Khaki', hex: '#A98C6C' },
+  { name: 'Chocolate', hex: '#3E1D0C' },
+  { name: 'Crimson', hex: '#B3293B' },
+  { name: 'Azalea', hex: '#FF87B5' },
+  { name: 'Sandstone', hex: '#E1CBB6' },
+  { name: 'Texas Orange', hex: '#A64224' },
+]
+
+/** Jerzees Dri-Power colors Ninja POD sells only in youth 29B */
+const JERZEES_29_YOUTH_ONLY: Swatch[] = [
+  { name: 'Birch', hex: '#E5E0E9' },
+]
+
 const GILDAN_5000: Swatch[] = [
   { name: 'White', hex: '#F0F0F0' },
   { name: 'Off White', hex: '#EDE9D6' },
@@ -419,6 +481,7 @@ const GILDAN_5000: Swatch[] = [
 
 const A4 = 'A4 moisture wicking'
 const ST350 = 'Sport-Tek ST350 PosiCharge (Ninja POD)'
+const JERZEES = 'Jerzees Dri-Power 29M and 29B (Ninja POD)'
 
 export const SHIRT_COLLECTIONS: ShirtCollection[] = [
   { id: 'epic', name: 'Epic Sports cool tee', shirt: 'Epic Cool Performance Dry-Fit Crew Tee, adult and youth, from Epic Sports',
@@ -437,6 +500,12 @@ export const SHIRT_COLLECTIONS: ShirtCollection[] = [
     shirt: 'Sport-Tek YST350 PosiCharge Competitor Tee: colors Ninja POD sells only in youth' },
   { id: 'st420', name: 'Sport-Tek ST420', colors: SPORTTEK_ST420,
     shirt: 'Sport-Tek ST420 adult and YST420 youth Posi-UV Pro Tee, from Ninja POD (both come in the same colors)' },
+  { id: 'jerzees', name: 'Jerzees Dri-Power', family: JERZEES, colors: JERZEES_29_SHARED,
+    shirt: 'Jerzees Dri-Power 29M adult and 29B youth Active Tee: the colors Ninja POD sells in both' },
+  { id: 'jerzees-adult-only', name: 'Jerzees Adult only', family: JERZEES, colors: JERZEES_29_ADULT_ONLY,
+    shirt: 'Jerzees Dri-Power 29M Active Tee: colors Ninja POD sells only in adult' },
+  { id: 'jerzees-youth-only', name: 'Jerzees Youth only', family: JERZEES, colors: JERZEES_29_YOUTH_ONLY,
+    shirt: 'Jerzees Dri-Power 29B Active Tee: colors Ninja POD sells only in youth' },
   { id: 'gildan', name: 'Gildan heavy tee', shirt: 'Gildan 5000 Heavy Cotton Tee', colors: GILDAN_5000 },
   { id: 'basic', name: 'Basic', shirt: 'Common shirt colors', colors: SHIRT_COLORS },
 ]
