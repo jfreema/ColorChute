@@ -2,6 +2,7 @@
  * The t-shirt drawings for the preview and the mockup export, as SVG strings in a 1000 × 1100 box. The same strings
  * go into <img> tags on screen and onto a canvas for the mockup, so both look the same.
  */
+import { camoPatternDef } from './camo'
 import { hexToRgba } from './color'
 
 export const SHIRT_W = 1000
@@ -43,15 +44,16 @@ const svg = (body: string, defs = '') =>
   `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${SHIRT_W} ${SHIRT_H}" width="${SHIRT_W}" height="${SHIRT_H}">` +
   `<defs>${defs}</defs>${body}</svg>`
 
-/** A flat shirt with thick ink outlines, in the app's own style */
-export function basicShirt(color: string): string {
+/** A flat shirt with thick ink outlines, in the app's own style. `camo` prints the digital camo over it in that color. */
+export function basicShirt(color: string, camo?: string): string {
   const ink = '#171F3D'
   return svg(
-    `<path d="${BODY}" fill="${color}" stroke="${ink}" stroke-width="7" stroke-linejoin="round"/>` +
+    `<path d="${BODY}" fill="${camo ? 'url(#camo)' : color}" stroke="${ink}" stroke-width="7" stroke-linejoin="round"/>` +
       `<path d="${INSIDE_NECK}" fill="${shade(color, -0.22)}" stroke="${ink}" stroke-width="7" stroke-linejoin="round"/>` +
       `<path d="${COLLAR}" fill="none" stroke="${ink}" stroke-width="7" stroke-linecap="round"/>` +
       `<path d="${SLEEVE_HEMS} ${HEM}" fill="none" stroke="${ink}" stroke-opacity="0.35" stroke-width="4" ` +
       `stroke-dasharray="10 9" stroke-linecap="round"/>`,
+    camo ? camoPatternDef('camo', color, camo) : '',
   )
 }
 

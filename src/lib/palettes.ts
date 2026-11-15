@@ -1,8 +1,11 @@
+import { camoTileUrl } from './camo'
 import { deltaE } from './color'
 
 export interface Swatch {
   name: string
   hex: string
+  /** A patterned shirt's second color: the darker digital camo printed over `hex` (see camo.ts) */
+  camo?: string
 }
 
 /**
@@ -334,6 +337,22 @@ const SPORTTEK_ST420: Swatch[] = [
   { name: 'True Navy', hex: '#2F2F41' },
 ]
 
+/**
+ * Sport-Tek Digi Camo, adult ST460 and youth YST460: Ninja POD sells both in the same 7 colors. Each is a base color
+ * with a darker digital camo printed over about half of it. Both tones were read off Ninja's ST460 photos (White's base
+ * is lifted to look white). The base hex is the swatch's color and must not match any other shirt swatch, since the
+ * preview finds the pattern by it.
+ */
+const SPORTTEK_ST460: Swatch[] = [
+  { name: 'White', hex: '#ECECEB', camo: '#9E9E9E' },
+  { name: 'Grey Concrete', hex: '#8D8C87', camo: '#5E5D58' },
+  { name: 'Black', hex: '#383A34', camo: '#252722' },
+  { name: 'True Red', hex: '#D70A27', camo: '#A10314' },
+  { name: 'Olive Drab Green', hex: '#6E6E49', camo: '#4B4B2B' },
+  { name: 'True Royal', hex: '#4269A8', camo: '#27497D' },
+  { name: 'True Navy', hex: '#3B3D52', camo: '#212435' },
+]
+
 /** Jerzees Dri-Power colors Ninja POD sells in both adult 29M and youth 29B */
 const JERZEES_29_SHARED: Swatch[] = [
   { name: 'White', hex: '#F0F0F2' },
@@ -500,6 +519,8 @@ export const SHIRT_COLLECTIONS: ShirtCollection[] = [
     shirt: 'Sport-Tek YST350 PosiCharge Competitor Tee: colors Ninja POD sells only in youth' },
   { id: 'st420', name: 'Sport-Tek ST420', colors: SPORTTEK_ST420,
     shirt: 'Sport-Tek ST420 adult and YST420 youth Posi-UV Pro Tee, from Ninja POD (both come in the same colors)' },
+  { id: 'st460', name: 'Sport-Tek Digi Camo', colors: SPORTTEK_ST460,
+    shirt: 'Sport-Tek ST460 adult and YST460 youth Digi Camo Tee, from Ninja POD (both come in the same colors)' },
   { id: 'jerzees', name: 'Jerzees Dri-Power', family: JERZEES, colors: JERZEES_29_SHARED,
     shirt: 'Jerzees Dri-Power 29M adult and 29B youth Active Tee: the colors Ninja POD sells in both' },
   { id: 'jerzees-adult-only', name: 'Jerzees Adult only', family: JERZEES, colors: JERZEES_29_ADULT_ONLY,
@@ -524,6 +545,25 @@ export function shirtCollectionGroups(): { family?: string; collections: ShirtCo
 export function shirtCollection(id: string | undefined): ShirtCollection {
   return SHIRT_COLLECTIONS.find((c) => c.id === id) ?? SHIRT_COLLECTIONS[0]
 }
+
+/** The darker camo color printed over this shirt color, if it is one of the patterned shirts */
+export function shirtCamo(hex: string): string | undefined {
+  const h = hex.toUpperCase()
+  for (const collection of SHIRT_COLLECTIONS) {
+    const s = collection.colors.find((c) => c.camo && c.hex.toUpperCase() === h)
+    if (s) return s.camo
+  }
+  return undefined
+}
+
+/** A CSS background for a shirt color: flat, or the camo pattern with its tile `tile` px square */
+export function shirtBackground(hex: string, tile = 256, at = '0 0'): string {
+  const camo = shirtCamo(hex)
+  return camo ? `url("${camoTileUrl(hex, camo)}") ${at} / ${tile}px ${tile}px repeat, ${hex}` : hex
+}
+
+/** A shirt swatch's background: camo shows big cells, from a spot of the tile that is about half dark */
+export const shirtSwatchBackground = (hex: string) => shirtBackground(hex, 400, '-45px -50px')
 
 /** The shirt color's name, looking in the chosen collection first */
 export function shirtColorName(hex: string, collectionId?: string): { name: string; collection: ShirtCollection } | undefined {

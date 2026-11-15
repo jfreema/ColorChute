@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { deleteOption, openOption, renameOption, useDesigns } from '../editor/designs'
 import { useEditor } from '../editor/store'
+import { shirtBackground } from '../lib/palettes'
 import { Pencil, Plus, X } from './icons'
 
 /** The open design's saved color options, side by side, for comparing schemes */
@@ -37,7 +38,7 @@ export function OptionStrip({ confirmDiscard, onSaveAsOption, readOnly }: {
             onDoubleClick={() => !locked && setRenaming(o.id)}
             onKeyDown={(e) => e.key === 'Enter' && o.id !== optionId && confirmDiscard(() => openOption(o.id))}
           >
-            <div className="thumb checker" style={o.shirt ? { background: o.shirt } : undefined}><img src={o.thumb} alt="" /></div>
+            <div className="thumb checker" style={o.shirt ? { background: shirtBackground(o.shirt, 160) } : undefined}><img src={o.thumb} alt="" /></div>
             <div className="meta">
               {renaming === o.id ? (
                 <input

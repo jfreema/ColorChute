@@ -9,6 +9,8 @@ import { editor, useEditor } from '../editor/store'
 import {
   basicShirt, PRINT_CENTER_X, PRINT_TOP, printScale, SHIRT_H, SHIRT_W, STUDIO, studioLightOpacity, svgUrl,
 } from '../lib/shirt'
+import { CAMO_TILE } from '../lib/camo'
+import { shirtBackground, shirtCamo } from '../lib/palettes'
 import { ImageDown, Maximize, Maximize2, Minimize2, Redo2, Shirt, Square, Undo2, ZoomIn, ZoomOut } from './icons'
 
 interface View {
@@ -427,7 +429,7 @@ export function Stage({ onDropFiles, focus, onToggleFocus, onSaveMockup }: {
     left: x + r.x * zoom, top: y + r.y * zoom, width: r.w * zoom, height: r.h * zoom,
   })
   const basicShirtUrl = useMemo(
-    () => (preview.mode === 'shirt' ? svgUrl(basicShirt(preview.shirtColor)) : null),
+    () => (preview.mode === 'shirt' ? svgUrl(basicShirt(preview.shirtColor, shirtCamo(preview.shirtColor))) : null),
     [preview.mode, preview.shirtColor],
   )
   const studioMask = `url(${STUDIO.shade})`
@@ -478,7 +480,7 @@ export function Stage({ onDropFiles, focus, onToggleFocus, onSaveMockup }: {
         <>
           <img className="layer-img" alt="" src={STUDIO.backdrop} style={place(scene.studio)} />
           <div className="layer-img" style={{
-            ...place(scene.studio), background: preview.shirtColor,
+            ...place(scene.studio), background: shirtBackground(preview.shirtColor, CAMO_TILE * (scene.studio.w / STUDIO.rect.w) * zoom),
             WebkitMaskImage: studioMask, maskImage: studioMask, WebkitMaskSize: '100% 100%', maskSize: '100% 100%',
           }} />
         </>

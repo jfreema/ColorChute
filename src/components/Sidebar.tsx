@@ -5,7 +5,7 @@ import { editor, useEditor } from '../editor/store'
 import { isHex, normalizeHex } from '../lib/color'
 import {
   BOARD_COLORS, EPIC_MATCH, epicColorName, INK_COLLECTIONS, inkCollection, inkColorName, nearestEpicColor,
-  shirtCollection, shirtCollectionGroups, shirtColorName,
+  shirtCollection, shirtCollectionGroups, shirtColorName, shirtSwatchBackground,
 } from '../lib/palettes'
 import { EPIC } from '../lib/printSpecs'
 import { ColorInput } from './ColorInput'
@@ -367,7 +367,7 @@ function PreviewPanel() {
               <div className="swatch-grid shirts">
                 {collection.colors.map((c) => (
                   <button key={c.name} className={`swatch ${p.shirtColor.toUpperCase() === c.hex.toUpperCase() ? 'selected' : ''}`}
-                    style={{ background: c.hex }} title={c.name} aria-label={`${c.name} shirt`}
+                    style={{ background: shirtSwatchBackground(c.hex) }} title={c.name} aria-label={`${c.name} shirt`}
                     onClick={() => editor.setPreview({ shirtColor: c.hex })} />
                 ))}
                 {custom(p.shirtColor, (c) => editor.setPreview({ shirtColor: c }), 'Any shirt color')}

@@ -4,6 +4,7 @@ import {
   copyLocalDesigns, deleteDesign, duplicateDesign, openDesign, refreshLibrary, renameDesign, setPublic, useDesigns,
 } from '../editor/designs'
 import type { DesignSummary } from '../editor/storage'
+import { shirtBackground } from '../lib/palettes'
 import { Dialog } from './Dialog'
 import { CloudUpload, Copy, Globe, Library, LogIn, Pencil, Trash2 } from './icons'
 
@@ -81,7 +82,7 @@ function DesignCard({ d, selected, onOpen, editable, admin }: {
       onKeyDown={(e) => e.key === 'Enter' && e.target === e.currentTarget && onOpen()}
       style={selected ? { outline: '3px solid var(--yellow)', outlineOffset: 1 } : undefined}
     >
-      <div className="thumb checker" style={d.shirt ? { background: d.shirt } : undefined}>
+      <div className="thumb checker" style={d.shirt ? { background: shirtBackground(d.shirt, 160) } : undefined}>
         {d.thumb && <img src={d.thumb} alt="" />}
       </div>
       <div className="meta">

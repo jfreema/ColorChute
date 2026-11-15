@@ -1,5 +1,6 @@
 import { hexToRgba } from '../lib/color'
-import { epicColorName, nearestEpicColor, shirtColorName } from '../lib/palettes'
+import { CAMO_TILE, camoTileUrl } from '../lib/camo'
+import { epicColorName, nearestEpicColor, shirtCamo, shirtColorName } from '../lib/palettes'
 import { DEFAULT_DPI, ExportSettings, slug, TARGETS } from '../lib/printSpecs'
 import { setPngDpi } from '../lib/png'
 import {
@@ -143,7 +144,11 @@ export async function renderMockup(
     // the shirt: its color, cut to the shirt's outline
     const fabric = makeCanvas(c.width, c.height)
     const fg = ctx2d(fabric)
-    fg.fillStyle = preview.shirtColor
+    const camo = shirtCamo(preview.shirtColor)
+    fg.fillStyle = camo
+      ? fg.createPattern(await loadImage(camoTileUrl(preview.shirtColor, camo, Math.round(CAMO_TILE * k))), 'repeat') ??
+        preview.shirtColor
+      : preview.shirtColor
     fg.fillRect(0, 0, c.width, c.height)
     fg.globalCompositeOperation = 'destination-in'
     fg.drawImage(shade, 0, 0, c.width, c.height)
@@ -159,7 +164,7 @@ export async function renderMockup(
   } else {
     g.fillStyle = preview.stageColor
     g.fillRect(0, 0, c.width, c.height)
-    g.drawImage(await loadSvg(basicShirt(preview.shirtColor)), 0, 0, c.width, c.height)
+    g.drawImage(await loadSvg(basicShirt(preview.shirtColor, shirtCamo(preview.shirtColor))), 0, 0, c.width, c.height)
     drawArt(g, art, dpi, f, k, sizeMode)
   }
   return c
