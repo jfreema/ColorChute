@@ -9,7 +9,7 @@ import { editor, useEditor } from '../editor/store'
 import {
   basicShirt, PRINT_CENTER_X, PRINT_TOP, printScale, SHIRT_H, SHIRT_W, STUDIO, studioLightOpacity, svgUrl,
 } from '../lib/shirt'
-import { Maximize, Maximize2, Minimize2, Redo2, Shirt, Square, Undo2, ZoomIn, ZoomOut } from './icons'
+import { ImageDown, Maximize, Maximize2, Minimize2, Redo2, Shirt, Square, Undo2, ZoomIn, ZoomOut } from './icons'
 
 interface View {
   zoom: number
@@ -35,10 +35,12 @@ function normRect(x0: number, y0: number, x1: number, y1: number, w: number, h: 
   return { x: ax, y: ay, w: bx - ax, h: by - ay }
 }
 
-export function Stage({ onDropFiles, focus, onToggleFocus }: {
+export function Stage({ onDropFiles, focus, onToggleFocus, onSaveMockup }: {
   onDropFiles: (files: FileList) => void
   focus: boolean
   onToggleFocus: () => void
+  /** Downloads the shirt preview as a picture; left out for people who can't export */
+  onSaveMockup?: () => Promise<void>
 }) {
   const width = useEditor((s) => s.width)
   const height = useEditor((s) => s.height)
@@ -69,6 +71,7 @@ export function Stage({ onDropFiles, focus, onToggleFocus }: {
   const cursor = useRef<{ x: number; y: number } | null>(null)
   const [space, setSpace] = useState(false)
   const [dropping, setDropping] = useState(false)
+  const [savingMockup, setSavingMockup] = useState(false)
   const dash = useRef(0)
 
   // MARK: Scene layout, in document pixels
@@ -526,6 +529,21 @@ export function Stage({ onDropFiles, focus, onToggleFocus }: {
         </button>
       </div>
       <div className="float tr" onPointerDown={(e) => e.stopPropagation()}>
+        {onSaveMockup && preview.mode !== 'square' && (
+          <button className="btn small" disabled={savingMockup} title="Download this shirt as a PNG image to share"
+            onClick={async () => {
+              setSavingMockup(true)
+              try {
+                await onSaveMockup()
+              } catch (e) {
+                editor.toast(e instanceof Error ? e.message : "Couldn't save the image")
+              } finally {
+                setSavingMockup(false)
+              }
+            }}>
+            <ImageDown size={14} /> <span className="lbl">Save image</span>
+          </button>
+        )}
         {focus && (
           <>
             <button className="btn small icon" disabled={!canUndo} onClick={() => editor.undo()} title="Undo" aria-label="Undo">

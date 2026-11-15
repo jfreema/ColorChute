@@ -20,7 +20,7 @@ import { readPixels } from './editor/doc'
 import { detachDesign, getDesigns, openDesign, openLink, refreshLibrary, save } from './editor/designs'
 import { leaveLink, parseLink } from './editor/links'
 import { clearCloudCache } from './editor/storage'
-import { download } from './editor/exporting'
+import { download, saveMockup } from './editor/exporting'
 import { contentBounds } from './editor/pixels'
 import { editor, hadSettings, ProjectFile, useEditor } from './editor/store'
 import { slug } from './lib/printSpecs'
@@ -266,7 +266,8 @@ export function App() {
         {!viewOnly && <Toolbar />}
         <section className="center">
           {!focus && !viewOnly && <OptionsBar />}
-          <Stage onDropFiles={addFiles} focus={focus} onToggleFocus={toggleFocus} />
+          <Stage onDropFiles={addFiles} focus={focus} onToggleFocus={toggleFocus}
+            onSaveMockup={viewOnly ? undefined : saveMockup} />
           {!focus && <OptionStrip confirmDiscard={confirmDiscard} onSaveAsOption={actions.saveAsOption} readOnly={viewOnly} />}
         </section>
         {!focus && <Sidebar onPlaceImage={actions.placeImage} viewOnly={viewOnly} />}

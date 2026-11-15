@@ -1,4 +1,5 @@
-import { epicColorName, nearestEpicColor } from '../lib/palettes'
+import { hexToRgba } from '../lib/color'
+import { epicColorName, nearestEpicColor, shirtColorName } from '../lib/palettes'
 import { DEFAULT_DPI, ExportSettings, slug, TARGETS } from '../lib/printSpecs'
 import { setPngDpi } from '../lib/png'
 import {
@@ -7,12 +8,15 @@ import {
 } from '../lib/shirt'
 import { makeZip } from '../lib/zip'
 import { ctx2d, makeCanvas, readPixels } from './doc'
-import { Check, inkColors, orderNote, screenChecks, shirtChecks } from './checks'
-import { contentBounds } from './pixels'
-import { PreviewSettings, resizeCanvas } from './store'
+import { Check, designInks, inkColors, orderNote, screenChecks, shirtChecks } from './checks'
+import { getDesigns } from './designs'
+import { contentBounds, hideInks } from './pixels'
+import { editor, PreviewSettings, resizeCanvas } from './store'
 
 export interface ExportResult {
   canvas: HTMLCanvasElement
+  /** The sized art without the background, for mockups */
+  art: HTMLCanvasElement
   dpi: number | null
   png: Uint8Array
   checks: Check[]
@@ -105,7 +109,7 @@ export async function buildExport(
   else if (s.target === 'icon') checks = screenChecks(px, png.length, 500 * 1024)
   else checks = []
   const suffix = s.target === 'custom' ? `${final.width}px` : TARGETS[s.target].suffix(final.width, final.height)
-  return { canvas: final, dpi, png, checks: dedupe(checks), inks, fileName: `${slug(baseName)}-${suffix}.png` }
+  return { canvas: final, art: c, dpi, png, checks: dedupe(checks), inks, fileName: `${slug(baseName)}-${suffix}.png` }
 }
 
 function dedupe(checks: Check[]): Check[] {
@@ -119,8 +123,13 @@ function dedupe(checks: Check[]): Check[] {
   return out
 }
 
-/** The art on a shirt of the preview's color, as the proof check picture */
-export async function renderMockup(art: HTMLCanvasElement, preview: PreviewSettings, dpi: number | null): Promise<HTMLCanvasElement> {
+/**
+ * The art on a shirt of the preview's color, its top on the print area's top. `sizeMode` sizes it as the preview's
+ * setting does; left out, the art is at print size when the DPI is known.
+ */
+export async function renderMockup(
+  art: HTMLCanvasElement, preview: PreviewSettings, dpi: number | null, sizeMode?: PreviewSettings['sizeMode'],
+): Promise<HTMLCanvasElement> {
   const k = 1.6
   const realistic = preview.mode === 'realistic'
   // The picture's frame in shirt units: the studio photo, or the drawn shirt's box
@@ -139,7 +148,7 @@ export async function renderMockup(art: HTMLCanvasElement, preview: PreviewSetti
     fg.globalCompositeOperation = 'destination-in'
     fg.drawImage(shade, 0, 0, c.width, c.height)
     g.drawImage(fabric, 0, 0)
-    drawArt(g, art, dpi, f, k)
+    drawArt(g, art, dpi, f, k, sizeMode)
     g.globalCompositeOperation = 'multiply'
     g.drawImage(shade, 0, 0, c.width, c.height)
     g.globalCompositeOperation = 'screen'
@@ -151,16 +160,45 @@ export async function renderMockup(art: HTMLCanvasElement, preview: PreviewSetti
     g.fillStyle = preview.stageColor
     g.fillRect(0, 0, c.width, c.height)
     g.drawImage(await loadSvg(basicShirt(preview.shirtColor)), 0, 0, c.width, c.height)
-    drawArt(g, art, dpi, f, k)
+    drawArt(g, art, dpi, f, k, sizeMode)
   }
   return c
 }
 
 /** Puts the art on the mockup's print area, at print size when the DPI is known */
-function drawArt(g: CanvasRenderingContext2D, art: HTMLCanvasElement, dpi: number | null, f: { x: number; y: number }, k: number) {
-  const s = printScale(art.width, art.height, dpi ?? DEFAULT_DPI, dpi ? 'actual' : 'fit') * k
+function drawArt(
+  g: CanvasRenderingContext2D, art: HTMLCanvasElement, dpi: number | null, f: { x: number; y: number }, k: number,
+  sizeMode?: PreviewSettings['sizeMode'],
+) {
+  const s = printScale(art.width, art.height, dpi ?? DEFAULT_DPI, sizeMode ?? (dpi ? 'actual' : 'fit')) * k
   const w = art.width * s, h = art.height * s
   g.drawImage(art, (PRINT_CENTER_X - f.x) * k - w / 2, (PRINT_TOP - f.y) * k, w, h)
+}
+
+/** The whole document as the stage shows it: inks hidden on screen are left out, so the shirt shows through */
+function shownArt(): HTMLCanvasElement {
+  const src = editor.composite()
+  const hidden = editor.state.hiddenInks
+  if (!hidden.length) return src
+  const px = readPixels(src)
+  hideInks(px, hidden.map(hexToRgba), designInks(src).map((k) => k.rgba))
+  const c = makeCanvas(src.width, src.height)
+  ctx2d(c).putImageData(px, 0, 0)
+  return c
+}
+
+/**
+ * Downloads the shirt preview as it is on screen, as a PNG to share: the open color option placed and sized as the
+ * stage has it, on the preview's shirt color. Named for the design, the option and the shirt color.
+ */
+export async function saveMockup(): Promise<void> {
+  const { preview, name, dpi } = editor.state
+  const d = getDesigns()
+  const option = d.options.find((o) => o.id === d.optionId)?.name
+  const shirt = shirtColorName(preview.shirtColor, preview.shirtCollection)?.name
+  const m = await renderMockup(shownArt(), preview, dpi, preview.sizeMode)
+  const parts = [d.designName || name, option, shirt].filter((p): p is string => !!p)
+  await download(await encodePng(m, null), `${slug(...parts)}-mockup.png`, 'image/png')
 }
 
 interface Downloads {

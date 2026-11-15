@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { worst } from '../editor/checks'
 import { allOptions, getDesigns, renderOption, useDesigns } from '../editor/designs'
-import { buildExport, download, encodePng, epicPackage, ExportResult, renderMockup } from '../editor/exporting'
+import { buildExport, download, encodePng, epicPackage, ExportResult, renderMockup, saveMockup } from '../editor/exporting'
 import { editor, useEditor } from '../editor/store'
 import { orderNote } from '../editor/checks'
 import { DEFAULT_EXPORT, ExportSettings, ExportTarget, slug, TARGETS } from '../lib/printSpecs'
@@ -99,11 +99,7 @@ export function ExportDialog({ onClose }: { onClose: () => void }) {
       download(zip, `${slug(baseName)}-print-files.zip`)
     })
 
-  const downloadMockup = () =>
-    run(async () => {
-      const m = await renderMockup(result?.canvas ?? editor.composite(), preview, result?.dpi ?? null)
-      download(await encodePng(m, null), `${slug(baseName)}-mockup.png`, 'image/png')
-    })
+  const downloadMockup = () => run(saveMockup)
 
   const downloadAll = () =>
     run(async () => {
@@ -120,7 +116,7 @@ export function ExportDialog({ onClose }: { onClose: () => void }) {
           })
         }
         if (s.target === 'shirt' && s.includeMockup) {
-          files.push({ name: `${slug(design, o.name)}-mockup.png`, data: await encodePng(await renderMockup(r.canvas, preview, r.dpi), null) })
+          files.push({ name: `${slug(design, o.name)}-mockup.png`, data: await encodePng(await renderMockup(r.art, preview, r.dpi), null) })
         }
       }
       download(makeZip(files), `${slug(design)}-all-colorways.zip`)
@@ -148,7 +144,7 @@ export function ExportDialog({ onClose }: { onClose: () => void }) {
               <Package size={14} /> All {options.length} options
             </button>
           )}
-          <button className="btn" disabled={working} onClick={downloadMockup} title="The art on the preview's shirt color">
+          <button className="btn" disabled={working} onClick={downloadMockup} title="The shirt preview as it looks on screen, as a PNG to share">
             <Shirt size={14} /> Mockup
           </button>
           {s.target === 'shirt' && (
