@@ -80,6 +80,9 @@ Fake values are fine: insert a user and a session (`token_hash` is the SHA-256 h
   the Export dialog's Mockup button both call `saveMockup` in `exporting.ts`: the whole document placed and sized as
   the stage has it, on the preview's shirt color, with hidden inks left out, never the export's background color.
   The Epic package's mockup is a print proof instead: the trimmed print art with every ink.
+- **Camo shirts are found by their hex.** A shirt swatch with `camo` (Sport-Tek Digi Camo) gets the digital camo
+  from `src/lib/camo.ts` wherever the shirt shows: `shirtCamo(hex)` looks the color up, so saved options and share
+  links still store a plain hex. A camo base hex must not match any solid shirt swatch; `camo.test.ts` checks it.
 - **Epic's numbers live in `printSpecs.ts`** and come from the Shirt Image Spec and the Team Logo and Icon Spec in
   the Shirt Graphics project. Change them there.
 - **Commits are authored as Jared** (`Jared Freeman <143004867+jfreema@users.noreply.github.com>`) with no
