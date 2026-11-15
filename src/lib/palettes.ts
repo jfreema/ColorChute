@@ -197,8 +197,8 @@ export interface ShirtCollection {
  * split the way Jared asked: colors sold in both adult and youth, then adult-only and youth-only outliers. A4 adds
  * the colors only Epic Sports lists. A4 hexes come from Jiffy's photos, except Athletic Orange, which Ninja's photos
  * show deeper than Jiffy's. ST420 White is lifted a little because its photo's shading makes it look gray.
- * Hot Coral and Pink Raspberry (youth ST350 only) come from Ninja's photos. Jerzees Dri-Power is split the same way,
- * with hexes from Ninja's adult photos (Birch from the youth photo; White lifted to look white).
+ * Hot Coral and Pink Raspberry (youth ST350 only) come from Ninja's photos. Jerzees Dri-Power and Gildan Ultra Cotton
+ * are split the same way, following Jared's lists from Ninja's catalog, with hexes from Ninja's photos.
  */
 const EPIC_COOL: Swatch[] = [
   { name: 'White', hex: '#F4F4F4' },
@@ -353,7 +353,7 @@ const SPORTTEK_ST460: Swatch[] = [
   { name: 'True Navy', hex: '#3B3D52', camo: '#212435' },
 ]
 
-/** Jerzees Dri-Power colors Ninja POD sells in both adult 29M and youth 29B */
+/** Jerzees Dri-Power colors Ninja POD sells in both adult 29M and youth 29B (Jared's list, from Ninja's catalog) */
 const JERZEES_29_SHARED: Swatch[] = [
   { name: 'White', hex: '#F0F0F2' },
   { name: 'Silver', hex: '#BBB4BB' },
@@ -371,7 +371,6 @@ const JERZEES_29_SHARED: Swatch[] = [
   { name: 'Cyber Pink', hex: '#FF3E95' },
   { name: 'Classic Pink', hex: '#FFD6DE' },
   { name: 'Deep Purple', hex: '#38275E' },
-  { name: 'Violet', hex: '#5F63AC' },
   { name: 'Vintage Heather Blue', hex: '#224B7F' },
   { name: 'Vintage Heather Navy', hex: '#15334F' },
   { name: 'J. Navy', hex: '#1C2E51' },
@@ -383,7 +382,6 @@ const JERZEES_29_SHARED: Swatch[] = [
   { name: 'Scuba Blue', hex: '#48CACC' },
   { name: 'Jade', hex: '#007F74' },
   { name: 'Cool Mint', hex: '#5ECDBD' },
-  { name: 'Irish Green Heather', hex: '#1DB585' },
   { name: 'Kelly', hex: '#009563' },
   { name: 'Forest Green', hex: '#0C3C2E' },
   { name: 'Military Green', hex: '#3B4020' },
@@ -398,20 +396,28 @@ const JERZEES_29_SHARED: Swatch[] = [
   { name: 'Burnt Orange', hex: '#FF4E25' },
 ]
 
-/** Jerzees Dri-Power colors Ninja POD sells only in adult 29M */
+/**
+ * Jerzees Dri-Power colors Ninja POD sells only in adult 29M (Jared's list). Clay, Golden Pecan, Retro Heather Royal,
+ * Rock and Sweet Cream Heather have no Ninja photo, so their hexes are Jerzees' own published values.
+ */
 const JERZEES_29_ADULT_ONLY: Swatch[] = [
   { name: 'Ash', hex: '#D9D8DD' },
+  { name: 'Sweet Cream Heather', hex: '#F3ECE6' },
+  { name: 'Clay', hex: '#B2A8A2' },
+  { name: 'Rock', hex: '#898A8D' },
   { name: 'Khaki', hex: '#A98C6C' },
+  { name: 'Sandstone', hex: '#E1CBB6' },
+  { name: 'Golden Pecan', hex: '#B77729' },
   { name: 'Chocolate', hex: '#3E1D0C' },
   { name: 'Crimson', hex: '#B3293B' },
-  { name: 'Azalea', hex: '#FF87B5' },
-  { name: 'Sandstone', hex: '#E1CBB6' },
+  { name: 'Retro Heather Royal', hex: '#385E9D' },
   { name: 'Texas Orange', hex: '#A64224' },
 ]
 
-/** Jerzees Dri-Power colors Ninja POD sells only in youth 29B */
+/** Jerzees Dri-Power colors Ninja POD sells only in youth 29B (Jared's list) */
 const JERZEES_29_YOUTH_ONLY: Swatch[] = [
-  { name: 'Birch', hex: '#E5E0E9' },
+  { name: 'Irish Green Heather', hex: '#1DB585' },
+  { name: 'Violet', hex: '#5F63AC' },
 ]
 
 /** Gildan Ultra Cotton colors Ninja POD sells in both adult G200 and youth G200B (Jared's list) */
