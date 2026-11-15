@@ -413,6 +413,12 @@ select.field.small { height: 26px; padding: 0 4px; font-size: 12px; max-width: 1
 .option-card:hover .ren { display: inline-flex; }
 .option-card .meta .nm.editable { cursor: text; }
 .option-card .meta .nm.editable:hover { text-decoration: underline dotted; }
+/* Dragging options to reorder them. No text selection or picture menus, so a press and hold picks the card up. */
+.option-card { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.option-card input { -webkit-user-select: text; user-select: text; }
+.option-card img { pointer-events: none; -webkit-user-drag: none; }
+.option-card.dragging { box-shadow: 4px 6px 0 var(--ink); }
+body.option-dragging, body.option-dragging * { cursor: grabbing !important; }
 .header .pill-btn { cursor: pointer; font: inherit; font-weight: 800; font-size: 11px; }
 .header .pill-btn:hover { filter: brightness(1.08); }
 .header .option-name { width: 150px; height: 26px; font-size: 12px; }

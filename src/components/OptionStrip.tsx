@@ -3,6 +3,7 @@ import { deleteOption, openOption, renameOption, useDesigns } from '../editor/de
 import { useEditor } from '../editor/store'
 import { shirtBackground } from '../lib/palettes'
 import { Pencil, Plus, X } from './icons'
+import { useOptionDrag } from './useOptionDrag'
 
 /** The open design's saved color options, side by side, for comparing schemes */
 export function OptionStrip({ confirmDiscard, onSaveAsOption, readOnly }: {
@@ -20,21 +21,27 @@ export function OptionStrip({ confirmDiscard, onSaveAsOption, readOnly }: {
   const dirty = useEditor((s) => s.dirty)
   const [renaming, setRenaming] = useState<string | null>(null)
   const [deleting, setDeleting] = useState<string | null>(null)
+  const drag = useOptionDrag(options.map((o) => o.id), !locked && !busy && !renaming)
 
   return (
     <div className="strip-row">
       <div className="strip-label"
-        title={options.length ? 'Click one to switch. Click the pencil, or the open one’s name, to rename it.' : 'Save the colors you have now, swap inks, then save another to compare'}>
+        title={!options.length ? 'Save the colors you have now, swap inks, then save another to compare'
+          : locked ? 'Click one to switch'
+            : 'Click one to switch. Drag one to change the order (on a phone, hold it first). Click the pencil, or the open one’s name, to rename it.'}>
         Color<br />options
       </div>
       <div className="strip">
-        {options.map((o) => (
+        {options.map((o, i) => (
           <div
             key={o.id}
+            data-option-id={o.id}
             role="button"
             tabIndex={0}
-            className={`card option-card ${o.id === optionId ? 'active' : ''}`}
-            onClick={() => o.id !== optionId && !busy && confirmDiscard(() => openOption(o.id))}
+            className={`card option-card ${o.id === optionId ? 'active' : ''} ${drag.dragging === o.id ? 'dragging' : ''}`}
+            style={drag.style(o.id, i)}
+            onPointerDown={(e) => drag.start(e, o.id)}
+            onClick={() => o.id !== optionId && !busy && !drag.justDropped() && confirmDiscard(() => openOption(o.id))}
             onDoubleClick={() => !locked && setRenaming(o.id)}
             onKeyDown={(e) => e.key === 'Enter' && o.id !== optionId && confirmDiscard(() => openOption(o.id))}
           >
@@ -63,7 +70,7 @@ export function OptionStrip({ confirmDiscard, onSaveAsOption, readOnly }: {
                   className={`nm ${o.id === optionId && !locked ? 'editable' : ''}`}
                   title={o.id === optionId && !locked ? `${o.name} (click to rename)` : o.name}
                   onClick={(e) => {
-                    if (o.id !== optionId || locked) return
+                    if (o.id !== optionId || locked || drag.justDropped()) return
                     e.stopPropagation()
                     setRenaming(o.id)
                   }}

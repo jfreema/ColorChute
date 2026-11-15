@@ -393,6 +393,37 @@ export function deleteOption(optionId: string) {
   })
 }
 
+/**
+ * Moves a color option to another place in the strip, saving the new order with the design. The first option is the
+ * one the design opens on and shows in the library.
+ */
+export function moveOption(optionId: string, to: number) {
+  if (!requireSave(() => moveOption(optionId, to))) return
+  const reorder = <T extends { id: string }>(list: T[]) => {
+    const from = list.findIndex((o) => o.id === optionId)
+    if (from < 0 || from === to) return list
+    const next = [...list]
+    next.splice(to, 0, ...next.splice(from, 1))
+    return next
+  }
+  const before = state.options
+  // Show the new order now, so the dropped card stays where it was put while the order saves
+  set({ options: reorder(before) })
+  return busy(async () => {
+    const d = await current()
+    if (!d || state.openFrom !== 'mine') return set({ options: before })
+    const moved = { ...d, options: reorder(d.options), updatedAt: Date.now() }
+    try {
+      await cloudStore.put(moved)
+    } catch (e) {
+      set({ options: before })
+      throw e
+    }
+    summarize(moved)
+    refreshLibrary()
+  })
+}
+
 export function renameDesign(designId: string, name: string) {
   if (!requireSave(() => renameDesign(designId, name))) return
   return busy(async () => {
