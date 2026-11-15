@@ -182,7 +182,7 @@ export interface ShirtCollection {
   name: string
   /** The exact blank and where it comes from */
   shirt: string
-  /** Groups the adult and youth versions of one shirt in the picker */
+  /** Groups one shirt's shared, adult-only, youth-only and extra color lists in the picker */
   family?: string
   colors: Swatch[]
 }
@@ -190,10 +190,11 @@ export interface ShirtCollection {
 /*
  * Hex values were read from each color's product photo (Nov 2026), so they are close to the real fabric but not exact.
  * Heathers show as their average color.
- * The A4 and Sport-Tek lists are exactly the colors Ninja Print on Demand sells for each adult and youth style
- * (Nov 15, 2026). A color keeps one hex across adult and youth. A4 hexes come from Jiffy's photos, except Athletic
- * Orange, which Ninja's photos show deeper than Safety Orange. ST420 White is lifted a little because its photo's
- * shading makes it look gray. Hot Coral and Pink Raspberry (youth ST350 only) come from Ninja's photos.
+ * A4 and Sport-Tek colors come from what Ninja Print on Demand sells for each adult and youth style (Nov 15, 2026),
+ * split the way Jared asked: colors sold in both adult and youth, then adult-only and youth-only outliers. A4 adds
+ * the colors only Epic Sports lists. A4 hexes come from Jiffy's photos, except Athletic Orange, which Ninja's photos
+ * show deeper than Jiffy's. ST420 White is lifted a little because its photo's shading makes it look gray.
+ * Hot Coral and Pink Raspberry (youth ST350 only) come from Ninja's photos.
  */
 const EPIC_COOL: Swatch[] = [
   { name: 'White', hex: '#F4F4F4' },
@@ -217,68 +218,63 @@ const EPIC_COOL: Swatch[] = [
   { name: 'Purple', hex: '#4B34A9' },
 ]
 
-const A4_ADULT: Swatch[] = [
+/** A4 colors Ninja POD sells in both adult (N3142) and youth (NB3142). Lime and Safety Orange are left out: they're
+ * on Ninja's public page but missing from its product catalog (Jared, Nov 15, 2026). */
+const A4_SHARED: Swatch[] = [
   { name: 'White', hex: '#F1F2F4' },
   { name: 'Silver', hex: '#B1B2AD' },
   { name: 'Graphite', hex: '#55595A' },
   { name: 'Black', hex: '#1B1D1C' },
   { name: 'Gold', hex: '#FEBD0D' },
-  { name: 'Safety Orange', hex: '#FA5617' },
   { name: 'Athletic Orange', hex: '#E74A0C' },
+  { name: 'Scarlet', hex: '#BB2032' },
+  { name: 'Maroon', hex: '#4B2937' },
+  { name: 'Safety Yellow', hex: '#D4F800' },
+  { name: 'Kelly Green', hex: '#2A7441' },
+  { name: 'Forest Green', hex: '#144F2F' },
+  { name: 'Light Blue', hex: '#6082AF' },
+  { name: 'Electric Blue', hex: '#03BACF' },
+  { name: 'Royal', hex: '#175298' },
+  { name: 'Navy', hex: '#1F2A40' },
+  { name: 'Purple', hex: '#453B6D' },
+]
+
+/** A4 colors Ninja POD sells only in adult */
+const A4_ADULT_ONLY: Swatch[] = [
   { name: 'Pink', hex: '#EFA7BB' },
   { name: 'Coral', hex: '#FE415B' },
-  { name: 'Scarlet', hex: '#BB2032' },
   { name: 'Cardinal', hex: '#682E3D' },
-  { name: 'Maroon', hex: '#4B2937' },
   { name: 'Pastel Mint', hex: '#BEECE2' },
-  { name: 'Safety Yellow', hex: '#D4F800' },
-  { name: 'Lime', hex: '#A6E84A' },
   { name: 'Olive', hex: '#796E5C' },
   { name: 'Teal', hex: '#2B8094' },
   { name: 'Military Green', hex: '#3E3F1F' },
-  { name: 'Kelly Green', hex: '#2A7441' },
-  { name: 'Forest Green', hex: '#144F2F' },
   { name: 'Pastel Blue', hex: '#D6F6F3' },
-  { name: 'Light Blue', hex: '#6082AF' },
-  { name: 'Electric Blue', hex: '#03BACF' },
-  { name: 'Royal', hex: '#175298' },
-  { name: 'Navy', hex: '#1F2A40' },
-  { name: 'Purple', hex: '#453B6D' },
   { name: 'Sand', hex: '#C6BFA5' },
 ]
 
-const A4_YOUTH: Swatch[] = [
-  { name: 'White', hex: '#F1F2F4' },
-  { name: 'Silver', hex: '#B1B2AD' },
-  { name: 'Graphite', hex: '#55595A' },
-  { name: 'Black', hex: '#1B1D1C' },
-  { name: 'Gold', hex: '#FEBD0D' },
-  { name: 'Safety Orange', hex: '#FA5617' },
-  { name: 'Athletic Orange', hex: '#E74A0C' },
-  { name: 'Scarlet', hex: '#BB2032' },
-  { name: 'Maroon', hex: '#4B2937' },
-  { name: 'Safety Yellow', hex: '#D4F800' },
-  { name: 'Lime', hex: '#A6E84A' },
-  { name: 'Kelly Green', hex: '#2A7441' },
-  { name: 'Forest Green', hex: '#144F2F' },
-  { name: 'Light Blue', hex: '#6082AF' },
-  { name: 'Electric Blue', hex: '#03BACF' },
-  { name: 'Royal', hex: '#175298' },
-  { name: 'Navy', hex: '#1F2A40' },
-  { name: 'Purple', hex: '#453B6D' },
+/** A4 N3142 colors on Epic Sports' list that Ninja POD doesn't sell */
+const A4_EPIC_ONLY: Swatch[] = [
+  { name: 'Light Yellow', hex: '#F8EFAC' },
+  { name: 'Vegas Gold', hex: '#CEB280' },
+  { name: 'Fuchsia', hex: '#C33C77' },
+  { name: 'Melon', hex: '#ECD0A0' },
+  { name: 'Texas Orange', hex: '#79301C' },
+  { name: 'Burnt Orange', hex: '#7B301D' },
+  { name: 'Salmon', hex: '#FBC3AF' },
+  { name: 'Light Lime', hex: '#BCE1B2' },
+  { name: 'Safety Green', hex: '#7BDA5C' },
+  { name: 'Sky Blue', hex: '#A4D3F0' },
+  { name: 'Brown', hex: '#4A2500' },
 ]
 
-const SPORTTEK_ST350: Swatch[] = [
+/** Sport-Tek colors Ninja POD sells in both adult ST350 and youth YST350 */
+const SPORTTEK_ST350_SHARED: Swatch[] = [
   { name: 'White', hex: '#EDF2F8' },
   { name: 'Silver', hex: '#BDC2BC' },
   { name: 'Grey Concrete', hex: '#797F7D' },
-  { name: 'Grey Concrete Heather', hex: '#5B6662' },
   { name: 'Iron Grey', hex: '#4D4E50' },
-  { name: 'Iron Grey Heather', hex: '#494D50' },
   { name: 'Black', hex: '#262827' },
   { name: 'Neon Yellow', hex: '#EAFB0A' },
-  { name: 'Vegas Gold', hex: '#D3CA9F' },
-  { name: 'Sand', hex: '#CBBFA5' },
   { name: 'Gold', hex: '#FAB731' },
   { name: 'Neon Orange', hex: '#F36A22' },
   { name: 'Texas Orange', hex: '#AD582F' },
@@ -290,49 +286,35 @@ const SPORTTEK_ST350: Swatch[] = [
   { name: 'Neon Pink', hex: '#F65394' },
   { name: 'Purple', hex: '#554282' },
   { name: 'True Navy', hex: '#293042' },
-  { name: 'True Navy Heather', hex: '#323B4A' },
   { name: 'True Royal', hex: '#215496' },
-  { name: 'True Royal Heather', hex: '#2A4F79' },
   { name: 'Carolina Blue', hex: '#72A5D0' },
   { name: 'Atomic Blue', hex: '#109BB7' },
   { name: 'Tropic Blue', hex: '#189FAB' },
   { name: 'Kelly Green', hex: '#19895B' },
   { name: 'Forest Green', hex: '#2B4633' },
   { name: 'Lime Shock', hex: '#BDDF55' },
+]
+
+/** Sport-Tek ST350 colors Ninja POD sells only in adult */
+const SPORTTEK_ST350_ADULT_ONLY: Swatch[] = [
+  { name: 'Grey Concrete Heather', hex: '#5B6662' },
+  { name: 'Iron Grey Heather', hex: '#494D50' },
+  { name: 'Vegas Gold', hex: '#D3CA9F' },
+  { name: 'Sand', hex: '#CBBFA5' },
+  { name: 'True Navy Heather', hex: '#323B4A' },
+  { name: 'True Royal Heather', hex: '#2A4F79' },
   { name: 'Olive Drab Green', hex: '#5B5D47' },
   { name: 'Coyote Brown', hex: '#867A60' },
   { name: 'Woodland Brown', hex: '#847058' },
 ]
 
-const SPORTTEK_YST350: Swatch[] = [
-  { name: 'White', hex: '#EDF2F8' },
-  { name: 'Silver', hex: '#BDC2BC' },
-  { name: 'Grey Concrete', hex: '#797F7D' },
-  { name: 'Iron Grey', hex: '#4D4E50' },
-  { name: 'Black', hex: '#262827' },
-  { name: 'Neon Yellow', hex: '#EAFB0A' },
-  { name: 'Gold', hex: '#FAB731' },
-  { name: 'Neon Orange', hex: '#F36A22' },
-  { name: 'Texas Orange', hex: '#AD582F' },
-  { name: 'Deep Orange', hex: '#D05631' },
-  { name: 'Cardinal', hex: '#5D242A' },
-  { name: 'True Red', hex: '#B31C2F' },
-  { name: 'Deep Red', hex: '#8D192C' },
-  { name: 'Maroon', hex: '#5C323C' },
-  { name: 'Neon Pink', hex: '#F65394' },
+/** Sport-Tek colors Ninja POD sells only in youth YST350 */
+const SPORTTEK_ST350_YOUTH_ONLY: Swatch[] = [
   { name: 'Hot Coral', hex: '#F0536E' },
   { name: 'Pink Raspberry', hex: '#EB1169' },
-  { name: 'Purple', hex: '#554282' },
-  { name: 'True Navy', hex: '#293042' },
-  { name: 'True Royal', hex: '#215496' },
-  { name: 'Carolina Blue', hex: '#72A5D0' },
-  { name: 'Atomic Blue', hex: '#109BB7' },
-  { name: 'Tropic Blue', hex: '#189FAB' },
-  { name: 'Kelly Green', hex: '#19895B' },
-  { name: 'Forest Green', hex: '#2B4633' },
-  { name: 'Lime Shock', hex: '#BDDF55' },
 ]
 
+/** Ninja POD sells the adult ST420 and youth YST420 in the same 15 colors */
 const SPORTTEK_ST420: Swatch[] = [
   { name: 'White', hex: '#F0F0F0' },
   { name: 'Dark Smoke Grey', hex: '#616161' },
@@ -350,9 +332,6 @@ const SPORTTEK_ST420: Swatch[] = [
   { name: 'True Royal', hex: '#104D90' },
   { name: 'True Navy', hex: '#2F2F41' },
 ]
-
-/** The youth YST420 comes in the same 15 colors as the adult ST420 */
-const SPORTTEK_YST420 = SPORTTEK_ST420
 
 const GILDAN_5000: Swatch[] = [
   { name: 'White', hex: '#F0F0F0' },
@@ -438,30 +417,31 @@ const GILDAN_5000: Swatch[] = [
   { name: 'Russet', hex: '#441F30' },
 ]
 
-const NINJA_A4 = 'A4 moisture wicking (Ninja POD)'
-const NINJA_ST350 = 'Sport-Tek ST350 PosiCharge (Ninja POD)'
-const NINJA_ST420 = 'Sport-Tek ST420 Posi-UV Pro (Ninja POD)'
+const A4 = 'A4 moisture wicking'
+const ST350 = 'Sport-Tek ST350 PosiCharge (Ninja POD)'
 
 export const SHIRT_COLLECTIONS: ShirtCollection[] = [
   { id: 'epic', name: 'Epic Sports cool tee', shirt: 'Epic Cool Performance Dry-Fit Crew Tee, adult and youth, from Epic Sports',
     colors: EPIC_COOL },
-  { id: 'a4', name: 'A4 adult', family: NINJA_A4, colors: A4_ADULT,
-    shirt: 'A4 N3142 Cooling Performance Tee, adult, from Ninja Print on Demand (Epic Sports sells A4 too)' },
-  { id: 'a4-youth', name: 'A4 youth', family: NINJA_A4, colors: A4_YOUTH,
-    shirt: 'A4 NB3142 Cooling Performance Tee, youth, from Ninja Print on Demand' },
-  { id: 'sporttek', name: 'ST350 adult', family: NINJA_ST350, colors: SPORTTEK_ST350,
-    shirt: 'Sport-Tek ST350 PosiCharge Competitor Tee, adult, from Ninja Print on Demand' },
-  { id: 'st350-youth', name: 'ST350 youth', family: NINJA_ST350, colors: SPORTTEK_YST350,
-    shirt: 'Sport-Tek YST350 PosiCharge Competitor Tee, youth, from Ninja Print on Demand' },
-  { id: 'st420', name: 'ST420 adult', family: NINJA_ST420, colors: SPORTTEK_ST420,
-    shirt: 'Sport-Tek ST420 Posi-UV Pro Tee, adult, from Ninja Print on Demand' },
-  { id: 'st420-youth', name: 'ST420 youth', family: NINJA_ST420, colors: SPORTTEK_YST420,
-    shirt: 'Sport-Tek YST420 Posi-UV Pro Tee, youth, from Ninja Print on Demand' },
+  { id: 'a4', name: 'A4', family: A4, colors: A4_SHARED,
+    shirt: 'A4 N3142 adult and NB3142 youth Cooling Performance Tee: the colors Ninja POD sells in both' },
+  { id: 'a4-adult-only', name: 'A4 Adult only', family: A4, colors: A4_ADULT_ONLY,
+    shirt: 'A4 N3142 Cooling Performance Tee: colors Ninja POD sells only in adult' },
+  { id: 'a4-epic-only', name: 'A4 Epic-only colors', family: A4, colors: A4_EPIC_ONLY,
+    shirt: "A4 N3142 Cooling Performance Tee: colors on Epic Sports' list that Ninja POD doesn't sell" },
+  { id: 'sporttek', name: 'Sport-Tek ST350', family: ST350, colors: SPORTTEK_ST350_SHARED,
+    shirt: 'Sport-Tek ST350 adult and YST350 youth PosiCharge Competitor Tee: the colors Ninja POD sells in both' },
+  { id: 'st350-adult-only', name: 'ST350 Adult only', family: ST350, colors: SPORTTEK_ST350_ADULT_ONLY,
+    shirt: 'Sport-Tek ST350 PosiCharge Competitor Tee: colors Ninja POD sells only in adult' },
+  { id: 'st350-youth-only', name: 'ST350 Youth only', family: ST350, colors: SPORTTEK_ST350_YOUTH_ONLY,
+    shirt: 'Sport-Tek YST350 PosiCharge Competitor Tee: colors Ninja POD sells only in youth' },
+  { id: 'st420', name: 'Sport-Tek ST420', colors: SPORTTEK_ST420,
+    shirt: 'Sport-Tek ST420 adult and YST420 youth Posi-UV Pro Tee, from Ninja POD (both come in the same colors)' },
   { id: 'gildan', name: 'Gildan heavy tee', shirt: 'Gildan 5000 Heavy Cotton Tee', colors: GILDAN_5000 },
   { id: 'basic', name: 'Basic', shirt: 'Common shirt colors', colors: SHIRT_COLORS },
 ]
 
-/** The picker's entries: single collections, and each shirt's adult and youth lists under one heading */
+/** The picker's entries: single collections, and each shirt's lists under one heading */
 export function shirtCollectionGroups(): { family?: string; collections: ShirtCollection[] }[] {
   const groups: { family?: string; collections: ShirtCollection[] }[] = []
   for (const c of SHIRT_COLLECTIONS) {
