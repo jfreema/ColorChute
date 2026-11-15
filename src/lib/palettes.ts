@@ -129,19 +129,127 @@ export const NINJA_INKS: Swatch[] = [
   { name: 'Tan', hex: '#B18F56' },
 ]
 
+/** Soft pastel and Easter colors, picked for this app */
+const PASTELS: Swatch[] = [
+  { name: 'Baby Pink', hex: '#F9C5D5' },
+  { name: 'Bubblegum', hex: '#FF9FC2' },
+  { name: 'Coral Blush', hex: '#F8B4A6' },
+  { name: 'Peach', hex: '#FFD1A9' },
+  { name: 'Sherbet', hex: '#FFB98C' },
+  { name: 'Butter Yellow', hex: '#FFF0A5' },
+  { name: 'Chick Yellow', hex: '#FFE36E' },
+  { name: 'Honeydew', hex: '#E8F7C8' },
+  { name: 'Pistachio', hex: '#C6E59E' },
+  { name: 'Easter Grass', hex: '#A8E39F' },
+  { name: 'Mint', hex: '#B5EAD7' },
+  { name: 'Robin’s Egg', hex: '#96D6D9' },
+  { name: 'Baby Blue', hex: '#BDE0F7' },
+  { name: 'Periwinkle', hex: '#B3BEF2' },
+  { name: 'Lavender', hex: '#D9C6F2' },
+  { name: 'Jelly Bean Purple', hex: '#B9A3E3' },
+  { name: 'Lilac', hex: '#E3B5E5' },
+  { name: 'Orchid', hex: '#D59AD6' },
+  { name: 'Cream', hex: '#FFF6E0' },
+]
+
+/** 1980s neon, synthwave and vaporwave colors, picked for this app */
+const EIGHTIES: Swatch[] = [
+  { name: 'Vapor Pink', hex: '#FF71CE' },
+  { name: 'Hot Magenta', hex: '#F72585' },
+  { name: 'Neon Fuchsia', hex: '#FF00FF' },
+  { name: 'Laser Red', hex: '#FF3864' },
+  { name: 'Sunset Orange', hex: '#FF6B35' },
+  { name: 'Neon Orange', hex: '#FF9F1C' },
+  { name: 'Cyber Yellow', hex: '#FCEE0A' },
+  { name: 'Vapor Yellow', hex: '#FFFB96' },
+  { name: 'Neon Green', hex: '#39FF14' },
+  { name: 'Vapor Mint', hex: '#05FFA1' },
+  { name: 'Miami Teal', hex: '#00C2B2' },
+  { name: 'Vapor Blue', hex: '#01CDFE' },
+  { name: 'Electric Blue', hex: '#4361EE' },
+  { name: 'Deep Indigo', hex: '#3A0CA3' },
+  { name: 'Electric Purple', hex: '#7209B7' },
+  { name: 'Vapor Purple', hex: '#B967FF' },
+  { name: 'Chrome', hex: '#C0C0C8' },
+  { name: 'Midnight Grid', hex: '#2B1055' },
+  { name: 'Arcade Black', hex: '#0D0221' },
+]
+
+/** Earthy vintage 1970s colors, picked for this app */
+const SEVENTIES: Swatch[] = [
+  { name: 'Harvest Gold', hex: '#DA9100' },
+  { name: 'Mustard', hex: '#E1AD01' },
+  { name: 'Sunflower', hex: '#F8B12C' },
+  { name: 'Tangerine', hex: '#F07C1F' },
+  { name: 'Burnt Orange', hex: '#CC5500' },
+  { name: 'Rust', hex: '#B7410E' },
+  { name: 'Brick', hex: '#8E2A1A' },
+  { name: 'Terracotta', hex: '#E2725B' },
+  { name: 'Dusty Rose', hex: '#C08081' },
+  { name: 'Eggplant', hex: '#614051' },
+  { name: 'Avocado', hex: '#568203' },
+  { name: 'Olive', hex: '#6B6B2A' },
+  { name: 'Pea Green', hex: '#8E9A3A' },
+  { name: 'Peacock Teal', hex: '#00787A' },
+  { name: 'Turquoise', hex: '#30B5B0' },
+  { name: 'Denim', hex: '#4F6D8F' },
+  { name: 'Chocolate', hex: '#5C3A21' },
+  { name: 'Copper', hex: '#B87333' },
+  { name: 'Camel', hex: '#C19A6B' },
+  { name: 'Cream', hex: '#F3E5AB' },
+]
+
+/**
+ * MrBeast, Feastables and Prime colors (Nov 15, 2026). None of them publish brand values, so these are read from
+ * their sites: MrBeast's from shopmrbeast.com's theme, Feastables' from feastables.com's theme and wrapper photos,
+ * and Prime's from the bottle photos on drinkprime.com. MrBeast, Feastables wrappers and Prime's blue bottles share
+ * one bright blue.
+ */
+const BEAST_PRIME: Swatch[] = [
+  { name: 'Beast Blue', hex: '#00BCE7' },
+  { name: 'Beast Pink', hex: '#E74683' },
+  { name: 'Black', hex: '#000000' },
+  { name: 'White', hex: '#FFFFFF' },
+  { name: 'Feastables Chocolate', hex: '#492426' },
+  { name: 'Feastables Cream', hex: '#F2EBE0' },
+  { name: 'Feastables Pink', hex: '#FF2F9F' },
+  { name: 'Feastables Purple', hex: '#67318F' },
+  { name: 'Feastables Lime', hex: '#CDFC18' },
+  { name: 'Peanut Butter Orange', hex: '#E56722' },
+  { name: 'Caramel', hex: '#E9A438' },
+  { name: 'Sour Strikes Green', hex: '#BFD351' },
+  { name: 'Prime Red', hex: '#F3202F' },
+  { name: 'Cherry Freeze', hex: '#E71948' },
+  { name: 'Strawberry Watermelon', hex: '#E785AE' },
+  { name: 'Orange Kream', hex: '#F19231' },
+  { name: 'Summer Pop Yellow', hex: '#FEDE01' },
+  { name: 'Lemon Lime', hex: '#8DC635' },
+  { name: 'Glowberry Green', hex: '#49A342' },
+]
+
 export interface InkCollection {
   id: string
   name: string
   /** Where the colors come from, shown under the swatches */
   about: string
   colors: Swatch[]
+  /** A themed palette rather than a print shop's inks, listed under Themes in the picker */
+  theme?: boolean
 }
 
-/** Print color groups for the fill color palette. Epic Sports is first because Epic prints the shirts. */
+/**
+ * Print color groups for the fill color palette. Epic Sports is first because Epic prints the shirts. The themed
+ * palettes come last; the color's title still says whether Epic has it.
+ */
 export const INK_COLLECTIONS: InkCollection[] = [
   { id: 'epic', name: 'Epic Sports', about: 'The 40 colors Epic prints', colors: EPIC_COLORS },
   { id: 'common', name: 'Common colors', about: 'Stock ink colors most print shops carry', colors: COMMON_INKS },
   { id: 'ninja', name: 'Ninja Transfers', about: 'Ninja’s screen print ink colors', colors: NINJA_INKS },
+  { id: 'pastels', name: 'Pastels', about: 'Soft pastel and Easter colors', colors: PASTELS, theme: true },
+  { id: '1980s', name: '1980s', about: '1980s neon, synthwave and vaporwave colors', colors: EIGHTIES, theme: true },
+  { id: '1970s', name: '1970s', about: 'Earthy vintage 1970s colors', colors: SEVENTIES, theme: true },
+  { id: 'beastprime', name: 'BeastPrime', colors: BEAST_PRIME, theme: true,
+    about: 'MrBeast, Feastables and Prime colors, read from their sites' },
 ]
 
 export function inkCollection(id: string | undefined): InkCollection {

@@ -92,7 +92,10 @@ function ColorsPanel() {
             <b className="grow">Print colors</b>
             <select className="field small" value={collection.id} title={collection.about} aria-label="Print colors from"
               onChange={(e) => setCollection(e.target.value)}>
-              {INK_COLLECTIONS.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              {INK_COLLECTIONS.filter((c) => !c.theme).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              <optgroup label="Themes">
+                {INK_COLLECTIONS.filter((c) => c.theme).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </optgroup>
             </select>
           </div>
           <div className="swatch-grid">
