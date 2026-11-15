@@ -188,6 +188,8 @@ export interface ShirtCollection {
 /*
  * Hex values were read from each color's product photo (Nov 2026), so they are close to the real fabric but not exact.
  * Heathers show as their average color.
+ * Sport-Tek ST420: the 15 colors Ninja Print on Demand offers (all of Sport-Tek's except Deep Red), read from Ninja's
+ * photos; White is lifted a little because the photo's shading makes it look gray.
  */
 const EPIC_COOL: Swatch[] = [
   { name: 'White', hex: '#F4F4F4' },
@@ -289,6 +291,24 @@ const SPORTTEK_ST350: Swatch[] = [
   { name: 'Woodland Brown', hex: '#847058' },
 ]
 
+const SPORTTEK_ST420: Swatch[] = [
+  { name: 'White', hex: '#F0F0F0' },
+  { name: 'Dark Smoke Grey', hex: '#616161' },
+  { name: 'Black', hex: '#1A1A1A' },
+  { name: 'Yellow', hex: '#EBD658' },
+  { name: 'Soft Coral', hex: '#F8A590' },
+  { name: 'True Red', hex: '#BC1F33' },
+  { name: 'Cardinal', hex: '#641F33' },
+  { name: 'Bright Seafoam', hex: '#8ED0B5' },
+  { name: 'Kelly Green', hex: '#1E805A' },
+  { name: 'Marine Green', hex: '#0F6D5D' },
+  { name: 'Forest Green', hex: '#253A2F' },
+  { name: 'Light Blue', hex: '#9EDCF9' },
+  { name: 'Sapphire', hex: '#02B3DD' },
+  { name: 'True Royal', hex: '#104D90' },
+  { name: 'True Navy', hex: '#2F2F41' },
+]
+
 const GILDAN_5000: Swatch[] = [
   { name: 'White', hex: '#F0F0F0' },
   { name: 'Off White', hex: '#EDE9D6' },
@@ -378,8 +398,10 @@ export const SHIRT_COLLECTIONS: ShirtCollection[] = [
     colors: EPIC_COOL },
   { id: 'a4', name: 'A4 moisture wicking', shirt: 'A4 N3142 Cooling Performance Tee, also sold by Epic Sports',
     colors: A4_N3142 },
-  { id: 'sporttek', name: 'Sport-Tek (Ninja)', shirt: 'Sport-Tek ST350 PosiCharge Competitor Tee, from Ninja Transfers',
+  { id: 'sporttek', name: 'Sport-Tek ST350', shirt: 'Sport-Tek ST350 PosiCharge Competitor Tee, from Ninja Transfers',
     colors: SPORTTEK_ST350 },
+  { id: 'st420', name: 'Sport-Tek ST420', shirt: 'Sport-Tek ST420 Posi-UV Pro Tee, from Ninja Print on Demand',
+    colors: SPORTTEK_ST420 },
   { id: 'gildan', name: 'Gildan heavy tee', shirt: 'Gildan 5000 Heavy Cotton Tee', colors: GILDAN_5000 },
   { id: 'basic', name: 'Basic', shirt: 'Common shirt colors', colors: SHIRT_COLORS },
 ]
