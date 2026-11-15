@@ -414,6 +414,75 @@ const JERZEES_29_YOUTH_ONLY: Swatch[] = [
   { name: 'Birch', hex: '#E5E0E9' },
 ]
 
+/** Gildan Ultra Cotton colors Ninja POD sells in both adult G200 and youth G200B (Jared's list) */
+const GILDAN_G200_SHARED: Swatch[] = [
+  { name: 'White', hex: '#F3F3F3' },
+  { name: 'Ash', hex: '#E1E0E5' },
+  { name: 'Sport Grey', hex: '#B3B2B0' },
+  { name: 'Charcoal', hex: '#454543' },
+  { name: 'Black', hex: '#181818' },
+  { name: 'Red', hex: '#B81327' },
+  { name: 'Cherry Red', hex: '#A1092D' },
+  { name: 'Safety Pink', hex: '#FC6099' },
+  { name: 'Heliconia', hex: '#E64682' },
+  { name: 'Maroon', hex: '#470120' },
+  { name: 'Light Pink', hex: '#FFD6EB' },
+  { name: 'Purple', hex: '#351956' },
+  { name: 'Navy', hex: '#1E2337' },
+  { name: 'Light Blue', hex: '#BBD8F8' },
+  { name: 'Carolina Blue', hex: '#6C9BCD' },
+  { name: 'Royal', hex: '#0C5AAF' },
+  { name: 'Sapphire', hex: '#017DBE' },
+  { name: 'Jade Dome', hex: '#007F7C' },
+  { name: 'Forest Green', hex: '#1D2D2A' },
+  { name: 'Kelly Green', hex: '#009565' },
+  { name: 'Irish Green', hex: '#00914C' },
+  { name: 'Mint Green', hex: '#D2F9C3' },
+  { name: 'Lime', hex: '#8FCC51' },
+  { name: 'Safety Green', hex: '#E9FB02' },
+  { name: 'Daisy', hex: '#F6E269' },
+  { name: 'Gold', hex: '#F29F00' },
+  { name: 'Safety Orange', hex: '#FF7E00' },
+  { name: 'Orange', hex: '#DB5A1B' },
+]
+
+/** Gildan Ultra Cotton colors Ninja POD sells only in adult G200 (Jared's list). Ninja has no photo of PFD
+ * White, so its hex is a guess; Kiwi is on Ninja's public page but not in Jared's list, so it is left out. */
+const GILDAN_G200_ADULT_ONLY: Swatch[] = [
+  { name: 'PFD White', hex: '#F2F1EC' },
+  { name: 'Ice Grey', hex: '#DEDAD7' },
+  { name: 'Prairie Dust', hex: '#706756' },
+  { name: 'Military Green', hex: '#485141' },
+  { name: 'Dark Heather', hex: '#4E4E4C' },
+  { name: 'Heather Navy', hex: '#3B3E51' },
+  { name: 'Antique Cherry Red', hex: '#871B28' },
+  { name: 'Heather Cardinal', hex: '#B24957' },
+  { name: 'Cardinal Red', hex: '#7B0D27' },
+  { name: 'Azalea', hex: '#F883B5' },
+  { name: 'Orchid', hex: '#E5CAED' },
+  { name: 'Metro Blue', hex: '#1C2448' },
+  { name: 'Heather Indigo', hex: '#5A6A84' },
+  { name: 'Antique Royal', hex: '#0E3478' },
+  { name: 'Iris', hex: '#428DE3' },
+  { name: 'Indigo Blue', hex: '#47576D' },
+  { name: 'Blue Dusk', hex: '#1B2831' },
+  { name: 'Stone Blue', hex: '#7B919F' },
+  { name: 'Heather Sapphire', hex: '#31A1DF' },
+  { name: 'Sky', hex: '#71C5E7' },
+  { name: 'Galapagos Blue', hex: '#015668' },
+  { name: 'Antique Irish Green', hex: '#018544' },
+  { name: 'Pistachio', hex: '#D5D893' },
+  { name: 'Natural', hex: '#EDEAD8' },
+  { name: 'Cornsilk', hex: '#F8EF8E' },
+  { name: 'Olive', hex: '#474133' },
+  { name: 'Vegas Gold', hex: '#FDD99E' },
+  { name: 'Tan', hex: '#C7AD7C' },
+  { name: 'Sand', hex: '#DBCEBE' },
+  { name: 'Dark Chocolate', hex: '#251B11' },
+  { name: 'Tangerine', hex: '#FC923B' },
+  { name: 'Texas Orange', hex: '#BB5729' },
+]
+
 const GILDAN_5000: Swatch[] = [
   { name: 'White', hex: '#F0F0F0' },
   { name: 'Off White', hex: '#EDE9D6' },
@@ -501,6 +570,7 @@ const GILDAN_5000: Swatch[] = [
 const A4 = 'A4 moisture wicking'
 const ST350 = 'Sport-Tek ST350 PosiCharge (Ninja POD)'
 const JERZEES = 'Jerzees Dri-Power 29M and 29B (Ninja POD)'
+const GILDAN_UC = 'Gildan Ultra Cotton G200 and G200B (Ninja POD)'
 
 export const SHIRT_COLLECTIONS: ShirtCollection[] = [
   { id: 'epic', name: 'Epic Sports cool tee', shirt: 'Epic Cool Performance Dry-Fit Crew Tee, adult and youth, from Epic Sports',
@@ -527,6 +597,10 @@ export const SHIRT_COLLECTIONS: ShirtCollection[] = [
     shirt: 'Jerzees Dri-Power 29M Active Tee: colors Ninja POD sells only in adult' },
   { id: 'jerzees-youth-only', name: 'Jerzees Youth only', family: JERZEES, colors: JERZEES_29_YOUTH_ONLY,
     shirt: 'Jerzees Dri-Power 29B Active Tee: colors Ninja POD sells only in youth' },
+  { id: 'gildan-uc', name: 'Gildan Ultra Cotton', family: GILDAN_UC, colors: GILDAN_G200_SHARED,
+    shirt: 'Gildan Ultra Cotton G200 adult and G200B youth Tee: the colors Ninja POD sells in both' },
+  { id: 'gildan-uc-adult-only', name: 'G200 Adult only', family: GILDAN_UC, colors: GILDAN_G200_ADULT_ONLY,
+    shirt: 'Gildan Ultra Cotton G200 Tee: colors Ninja POD sells only in adult' },
   { id: 'gildan', name: 'Gildan heavy tee', shirt: 'Gildan 5000 Heavy Cotton Tee', colors: GILDAN_5000 },
   { id: 'basic', name: 'Basic', shirt: 'Common shirt colors', colors: SHIRT_COLORS },
 ]
