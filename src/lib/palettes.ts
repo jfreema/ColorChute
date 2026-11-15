@@ -396,22 +396,26 @@ const JERZEES_29_SHARED: Swatch[] = [
   { name: 'Burnt Orange', hex: '#FF4E25' },
 ]
 
-/**
- * Jerzees Dri-Power colors Ninja POD sells only in adult 29M (Jared's list). Clay, Golden Pecan, Retro Heather Royal,
- * Rock and Sweet Cream Heather have no Ninja photo, so their hexes are Jerzees' own published values.
- */
+/** Jerzees Dri-Power colors Ninja POD sells only in adult 29M (Jared's list) */
 const JERZEES_29_ADULT_ONLY: Swatch[] = [
   { name: 'Ash', hex: '#D9D8DD' },
+  { name: 'Khaki', hex: '#A98C6C' },
+  { name: 'Sandstone', hex: '#E1CBB6' },
+  { name: 'Chocolate', hex: '#3E1D0C' },
+  { name: 'Crimson', hex: '#B3293B' },
+  { name: 'Texas Orange', hex: '#A64224' },
+]
+
+/**
+ * Adult 29M colors in Jared's Ninja catalog list that Ninja's public site doesn't show. Ninja has no photos of them,
+ * so the hexes are Jerzees' own published values.
+ */
+const JERZEES_29_CATALOG_ONLY: Swatch[] = [
   { name: 'Sweet Cream Heather', hex: '#F3ECE6' },
   { name: 'Clay', hex: '#B2A8A2' },
   { name: 'Rock', hex: '#898A8D' },
-  { name: 'Khaki', hex: '#A98C6C' },
-  { name: 'Sandstone', hex: '#E1CBB6' },
   { name: 'Golden Pecan', hex: '#B77729' },
-  { name: 'Chocolate', hex: '#3E1D0C' },
-  { name: 'Crimson', hex: '#B3293B' },
   { name: 'Retro Heather Royal', hex: '#385E9D' },
-  { name: 'Texas Orange', hex: '#A64224' },
 ]
 
 /** Jerzees Dri-Power colors Ninja POD sells only in youth 29B (Jared's list) */
@@ -452,10 +456,11 @@ const GILDAN_G200_SHARED: Swatch[] = [
   { name: 'Orange', hex: '#DB5A1B' },
 ]
 
-/** Gildan Ultra Cotton colors Ninja POD sells only in adult G200 (Jared's list). Ninja has no photo of PFD
- * White, so its hex is a guess; Kiwi is on Ninja's public page but not in Jared's list, so it is left out. */
+/**
+ * Gildan Ultra Cotton colors Ninja POD sells only in adult G200 (Jared's list). Kiwi is on Ninja's public page but
+ * not in Jared's list, so it is left out.
+ */
 const GILDAN_G200_ADULT_ONLY: Swatch[] = [
-  { name: 'PFD White', hex: '#F2F1EC' },
   { name: 'Ice Grey', hex: '#DEDAD7' },
   { name: 'Prairie Dust', hex: '#706756' },
   { name: 'Military Green', hex: '#485141' },
@@ -487,6 +492,14 @@ const GILDAN_G200_ADULT_ONLY: Swatch[] = [
   { name: 'Dark Chocolate', hex: '#251B11' },
   { name: 'Tangerine', hex: '#FC923B' },
   { name: 'Texas Orange', hex: '#BB5729' },
+]
+
+/**
+ * Adult G200 colors in Jared's Ninja catalog list that Ninja's public site doesn't show. PFD White has no photo, so
+ * its hex is a guess.
+ */
+const GILDAN_G200_CATALOG_ONLY: Swatch[] = [
+  { name: 'PFD White', hex: '#F2F1EC' },
 ]
 
 const GILDAN_5000: Swatch[] = [
@@ -603,10 +616,14 @@ export const SHIRT_COLLECTIONS: ShirtCollection[] = [
     shirt: 'Jerzees Dri-Power 29M Active Tee: colors Ninja POD sells only in adult' },
   { id: 'jerzees-youth-only', name: 'Jerzees Youth only', family: JERZEES, colors: JERZEES_29_YOUTH_ONLY,
     shirt: 'Jerzees Dri-Power 29B Active Tee: colors Ninja POD sells only in youth' },
+  { id: 'jerzees-catalog-only', name: 'Jerzees catalog only', family: JERZEES, colors: JERZEES_29_CATALOG_ONLY,
+    shirt: "Jerzees Dri-Power 29M Active Tee: adult colors in Ninja POD's catalog that its public site doesn't show" },
   { id: 'gildan-uc', name: 'Gildan Ultra Cotton', family: GILDAN_UC, colors: GILDAN_G200_SHARED,
     shirt: 'Gildan Ultra Cotton G200 adult and G200B youth Tee: the colors Ninja POD sells in both' },
   { id: 'gildan-uc-adult-only', name: 'G200 Adult only', family: GILDAN_UC, colors: GILDAN_G200_ADULT_ONLY,
     shirt: 'Gildan Ultra Cotton G200 Tee: colors Ninja POD sells only in adult' },
+  { id: 'gildan-uc-catalog-only', name: 'G200 catalog only', family: GILDAN_UC, colors: GILDAN_G200_CATALOG_ONLY,
+    shirt: "Gildan Ultra Cotton G200 Tee: adult colors in Ninja POD's catalog that its public site doesn't show" },
   { id: 'gildan', name: 'Gildan heavy tee', shirt: 'Gildan 5000 Heavy Cotton Tee', colors: GILDAN_5000 },
   { id: 'basic', name: 'Basic', shirt: 'Common shirt colors', colors: SHIRT_COLORS },
 ]
