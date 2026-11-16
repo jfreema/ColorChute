@@ -227,6 +227,29 @@ const BEAST_PRIME: Swatch[] = [
   { name: 'Glowberry Green', hex: '#49A342' },
 ]
 
+/**
+ * What the Custom group starts with (Jared, Nov 16, 2026): colors read from two of his photos, a marker sketch of a
+ * U-joint and a pastel cotton candy machine. Each is the median of a well-lit patch; the machine's periwinkle window
+ * was dropped as too close to Marker Violet. People change their own copy of this list in the app.
+ */
+export const CUSTOM_STARTERS: Swatch[] = [
+  { name: 'Marker Yellow', hex: '#E5EA84' },
+  { name: 'Marker Orange', hex: '#E88939' },
+  { name: 'Marker Rose', hex: '#DE7790' },
+  { name: 'Marker Magenta', hex: '#C8498C' },
+  { name: 'Marker Orchid', hex: '#A645B2' },
+  { name: 'Marker Violet', hex: '#977ACE' },
+  { name: 'Marker Blue', hex: '#4DA3E3' },
+  { name: 'Marker Mint', hex: '#A8E4D0' },
+  { name: 'Marker Green', hex: '#93CE47' },
+  { name: 'Marker Tan', hex: '#E0D0A3' },
+  { name: 'Candy Pink', hex: '#E8AEBC' },
+  { name: 'Candy Lilac', hex: '#EED9FC' },
+  { name: 'Candy Blue', hex: '#7BB1C8' },
+  { name: 'Candy Yellow', hex: '#F8DB62' },
+  { name: 'Candy Gold', hex: '#D8A538' },
+]
+
 export interface InkCollection {
   id: string
   name: string
@@ -235,6 +258,8 @@ export interface InkCollection {
   colors: Swatch[]
   /** A themed palette rather than a print shop's inks, listed under Themes in the picker */
   theme?: boolean
+  /** Each person's own list, saved to their account; `colors` is only what it starts with (see customColors.ts) */
+  custom?: boolean
 }
 
 /**
@@ -245,6 +270,7 @@ export const INK_COLLECTIONS: InkCollection[] = [
   { id: 'epic', name: 'Epic Sports', about: 'The 40 colors Epic prints', colors: EPIC_COLORS },
   { id: 'common', name: 'Common colors', about: 'Stock ink colors most print shops carry', colors: COMMON_INKS },
   { id: 'ninja', name: 'Ninja Transfers', about: 'Ninja’s screen print ink colors', colors: NINJA_INKS },
+  { id: 'custom', name: 'Custom', about: 'Your own colors, saved to your account', colors: CUSTOM_STARTERS, custom: true },
   { id: 'pastels', name: 'Pastels', about: 'Soft pastel and Easter colors', colors: PASTELS, theme: true },
   { id: '1980s', name: '1980s', about: '1980s neon, synthwave and vaporwave colors', colors: EIGHTIES, theme: true },
   { id: '1970s', name: '1970s', about: 'Earthy vintage 1970s colors', colors: SEVENTIES, theme: true },
@@ -252,14 +278,21 @@ export const INK_COLLECTIONS: InkCollection[] = [
     about: 'MrBeast, Feastables and Prime colors, read from their sites' },
 ]
 
-export function inkCollection(id: string | undefined): InkCollection {
-  return INK_COLLECTIONS.find((c) => c.id === id) ?? INK_COLLECTIONS[0]
+/** The print color groups with the Custom group holding this person's own colors */
+export function withCustomColors(colors: Swatch[]): InkCollection[] {
+  return INK_COLLECTIONS.map((c) => (c.custom ? { ...c, colors } : c))
+}
+
+export function inkCollection(id: string | undefined, collections = INK_COLLECTIONS): InkCollection {
+  return collections.find((c) => c.id === id) ?? collections[0]
 }
 
 /** A print color's name, looking in the chosen group first */
-export function inkColorName(hex: string, collectionId?: string): { name: string; collection: InkCollection } | undefined {
-  const first = inkCollection(collectionId)
-  for (const collection of [first, ...INK_COLLECTIONS.filter((c) => c !== first)]) {
+export function inkColorName(
+  hex: string, collectionId?: string, collections = INK_COLLECTIONS,
+): { name: string; collection: InkCollection } | undefined {
+  const first = inkCollection(collectionId, collections)
+  for (const collection of [first, ...collections.filter((c) => c !== first)]) {
     const s = collection.colors.find((c) => deltaE(c.hex, hex) < EPIC_MATCH)
     if (s) return { name: s.name, collection }
   }

@@ -1,11 +1,12 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { designInks } from '../editor/checks'
+import { addCustomColor, removeCustomColor, useCustomColors } from '../editor/customColors'
 import { ColorCount } from '../editor/pixels'
 import { editor, useEditor } from '../editor/store'
 import { isHex, normalizeHex } from '../lib/color'
 import {
-  BOARD_COLORS, EPIC_MATCH, epicColorName, INK_COLLECTIONS, inkCollection, inkColorName, nearestEpicColor,
-  shirtCollection, shirtCollectionGroups, shirtColorName, shirtSwatchBackground,
+  BOARD_COLORS, EPIC_MATCH, epicColorName, InkCollection, inkCollection, inkColorName, nearestEpicColor,
+  shirtCollection, shirtCollectionGroups, shirtColorName, shirtSwatchBackground, withCustomColors,
 } from '../lib/palettes'
 import { EPIC } from '../lib/printSpecs'
 import { ColorInput } from './ColorInput'
@@ -28,7 +29,7 @@ export function Sidebar({ onPlaceImage, viewOnly }: { onPlaceImage: () => void; 
 const INKS_KEY = 'colorchute.inkCollection'
 
 /** The print color group picked in the palette, remembered in this browser */
-function useInkCollection() {
+function useInkCollection(collections: InkCollection[]) {
   const [id, setId] = useState(() => {
     try {
       return localStorage.getItem(INKS_KEY) ?? 'epic'
@@ -44,16 +45,19 @@ function useInkCollection() {
       // Private windows can refuse storage; the choice just won't stick
     }
   }
-  return [inkCollection(id), choose] as const
+  return [inkCollection(id, collections), choose] as const
 }
 
 function ColorsPanel() {
   const primary = useEditor((s) => s.primary)
   const recent = useEditor((s) => s.recent)
   const [text, setText] = useState(primary)
-  const [collection, setCollection] = useInkCollection()
+  const custom = useCustomColors()
+  const collections = useMemo(() => withCustomColors(custom), [custom])
+  const [collection, setCollection] = useInkCollection(collections)
   useEffect(() => setText(primary), [primary])
-  const named = inkColorName(primary, collection.id)
+  const named = inkColorName(primary, collection.id, collections)
+  const inCustom = custom.some((c) => c.hex === primary)
   const epicName = epicColorName(primary)
   const title = named
     ? `${named.name}${named.collection !== collection ? ` (${named.collection.name})` : ''}`
@@ -92,9 +96,9 @@ function ColorsPanel() {
             <b className="grow">Print colors</b>
             <select className="field small" value={collection.id} title={collection.about} aria-label="Print colors from"
               onChange={(e) => setCollection(e.target.value)}>
-              {INK_COLLECTIONS.filter((c) => !c.theme).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              {collections.filter((c) => !c.theme).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
               <optgroup label="Themes">
-                {INK_COLLECTIONS.filter((c) => c.theme).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                {collections.filter((c) => c.theme).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </optgroup>
             </select>
           </div>
@@ -104,7 +108,22 @@ function ColorsPanel() {
                 title={`${c.name} ${c.hex}`} aria-label={c.name} onClick={() => editor.setPrimary(c.hex)} />
             ))}
           </div>
-          <div className="hint" style={{ marginTop: 6 }}>{collection.about}</div>
+          {collection.custom && (
+            // Adds the fill color, however it was picked; Remove takes out the selected swatch
+            <div className="row tight" style={{ marginTop: collection.colors.length ? 8 : 0 }}>
+              <button className="btn small" disabled={inCustom} onClick={() => addCustomColor(primary)}
+                title={inCustom ? 'The fill color is already in Custom' : `Add the fill color (${primary}) to Custom`}>
+                <Plus size={14} /> Add fill color
+              </button>
+              <button className="btn small" disabled={!inCustom} onClick={() => removeCustomColor(primary)}
+                title={inCustom ? 'Take the selected color out of Custom' : 'Pick one of the Custom colors to remove it'}>
+                <Trash2 size={14} /> Remove
+              </button>
+            </div>
+          )}
+          <div className="hint" style={{ marginTop: 6 }}>
+            {collection.custom && !collection.colors.length ? 'No colors yet. Pick any fill color and add it.' : collection.about}
+          </div>
         </div>
         {recent.length > 0 && (
           <div className="card-row tinted">

@@ -8,9 +8,14 @@
  *   GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET  the Google OAuth web client
  *   ADMIN_EMAILS                            comma-separated Google addresses that are always approved admins
  *
+ * Each account's Custom print colors are one small JSON list (table custom_colors), checked by the same rules the app
+ * uses (src/lib/customColorList.ts).
+ *
  * Share links (/s/<token>) let anyone with the link look at one design, public or not. The Worker answers those pages
  * itself only to add link-preview tags (the design's name and picture) to the app's index.html.
  */
+
+import { cleanCustomColors, MAX_CUSTOM_COLORS } from '../src/lib/customColorList'
 
 interface Env {
   ASSETS: Fetcher
@@ -84,6 +89,10 @@ async function route(req: Request, env: Env, url: URL): Promise<Response> {
     await env.DB.prepare('UPDATE users SET samples_seeded = 1 WHERE id = ?').bind(u.id).run()
     return json({ ok: true })
   }
+  if (p === '/api/me/colors') {
+    if (m === 'GET') return getCustomColors(env, requireApproved(user, env))
+    if (m === 'PUT') return putCustomColors(req, env, requireApproved(user, env))
+  }
 
   if (p === '/api/admin/users' && m === 'GET') return adminList(env, requireAdmin(user, env))
   let r = p.match(new RegExp(`^/api/admin/users/(${ID})$`))
@@ -153,6 +162,9 @@ function schema(env: Env) {
     env.DB.prepare(`CREATE TABLE IF NOT EXISTS share_links (
       id TEXT PRIMARY KEY, user_id TEXT NOT NULL, design_id TEXT NOT NULL, created_at INTEGER NOT NULL,
       UNIQUE (user_id, design_id))`),
+    // Each account's Custom print colors, as a JSON list of { name, hex }. No row means the starting colors.
+    env.DB.prepare(`CREATE TABLE IF NOT EXISTS custom_colors (
+      user_id TEXT PRIMARY KEY, colors TEXT NOT NULL, updated_at INTEGER NOT NULL)`),
   ]).catch((e) => {
     ready = null
     throw e
@@ -245,6 +257,28 @@ async function adminUpdate(req: Request, env: Env, admin: UserRow, id: string) {
   const makeAdmin = body.admin === undefined ? target.is_admin : body.admin ? 1 : 0
   await env.DB.prepare('UPDATE users SET status = ?, is_admin = ?, decided_at = ?, decided_by = ? WHERE id = ?')
     .bind(status, status === 'approved' ? makeAdmin : 0, Date.now(), admin.id, id).run()
+  return json({ ok: true })
+}
+
+// MARK: Custom colors
+
+/** The account's Custom colors, or null if it never changed them (the app then shows the starting colors) */
+async function getCustomColors(env: Env, u: UserRow) {
+  const r = await env.DB.prepare('SELECT colors FROM custom_colors WHERE user_id = ?').bind(u.id).first<{ colors: string }>()
+  return json({ colors: r ? cleanCustomColors(JSON.parse(r.colors)) : null })
+}
+
+async function putCustomColors(req: Request, env: Env, u: UserRow) {
+  const { colors } = await readJson<{ colors?: unknown }>(req, 20_000)
+  if (Array.isArray(colors) && colors.length > MAX_CUSTOM_COLORS) {
+    throw new HttpError(400, `Custom holds up to ${MAX_CUSTOM_COLORS} colors`)
+  }
+  const list = cleanCustomColors(colors)
+  if (!list) throw new HttpError(400, 'Send the list of colors')
+  await env.DB.prepare(
+    `INSERT INTO custom_colors (user_id, colors, updated_at) VALUES (?, ?, ?)
+     ON CONFLICT (user_id) DO UPDATE SET colors = excluded.colors, updated_at = excluded.updated_at`,
+  ).bind(u.id, JSON.stringify(list), Date.now()).run()
   return json({ ok: true })
 }
 
