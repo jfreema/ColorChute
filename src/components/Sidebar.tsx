@@ -107,13 +107,21 @@ function ColorsPanel() {
               <button key={c.hex} className={`swatch ${c.hex === primary ? 'selected' : ''}`} style={{ background: c.hex }}
                 title={`${c.name} ${c.hex}`} aria-label={c.name} onClick={() => editor.setPrimary(c.hex)} />
             ))}
+            {collection.custom && (
+              // Jared (2026-11-17): a color picker right in the group. What it mixes becomes the fill color, ready to save.
+              <label className="swatch mix-swatch" title="Mix a new color, then save it to Custom">
+                <Plus size={13} strokeWidth={3} />
+                <input type="color" className="color-input" value={primary.toLowerCase()} aria-label="Mix a new color"
+                  onChange={(e) => editor.setPrimary(e.target.value)} />
+              </label>
+            )}
           </div>
           {collection.custom && (
-            // Adds the fill color, however it was picked; Remove takes out the selected swatch
-            <div className="row tight" style={{ marginTop: collection.colors.length ? 8 : 0 }}>
-              <button className="btn small" disabled={inCustom} onClick={() => addCustomColor(primary)}
-                title={inCustom ? 'The fill color is already in Custom' : `Add the fill color (${primary}) to Custom`}>
-                <Plus size={14} /> Add fill color
+            // Saves the fill color, however it was picked; Remove takes out the selected swatch
+            <div className="row tight" style={{ marginTop: 8 }}>
+              <button className={`btn small ${inCustom ? '' : 'green'}`} disabled={inCustom} onClick={() => addCustomColor(primary)}
+                title={inCustom ? 'This color is already in Custom' : `Save ${primary} to Custom`}>
+                Save <span className="swatch" style={{ width: 14, height: 14, borderRadius: 4, background: primary }} /> to Custom
               </button>
               <button className="btn small" disabled={!inCustom} onClick={() => removeCustomColor(primary)}
                 title={inCustom ? 'Take the selected color out of Custom' : 'Pick one of the Custom colors to remove it'}>
@@ -121,9 +129,7 @@ function ColorsPanel() {
               </button>
             </div>
           )}
-          <div className="hint" style={{ marginTop: 6 }}>
-            {collection.custom && !collection.colors.length ? 'No colors yet. Pick any fill color and add it.' : collection.about}
-          </div>
+          <div className="hint" style={{ marginTop: 6 }}>{collection.about}</div>
         </div>
         {recent.length > 0 && (
           <div className="card-row tinted">

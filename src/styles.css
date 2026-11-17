@@ -438,6 +438,13 @@ body.option-dragging, body.option-dragging * { cursor: grabbing !important; }
 
 .big-swatch { width: 40px; height: 40px; border-radius: 8px; }
 .color-input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+.mix-swatch {
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: conic-gradient(#ff4d4d, #ffd93d, #5ee05e, #3dd9ff, #4d6bff, #e24dff, #ff4d4d);
+}
+.mix-swatch svg { background: #fff; border-radius: 50%; padding: 1px; color: var(--ink); }
 .ink-row { display: flex; align-items: center; gap: 8px; padding: 6px 10px; }
 .ink-row + .ink-row { border-top: 1px solid var(--line); }
 .ink-row .hex { font-weight: 800; font-size: 12px; }

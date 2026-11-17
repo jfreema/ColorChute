@@ -124,7 +124,7 @@ export function addCustomColor(hex: string) {
     ? lastRemoved.name
     : inkColorName(h, undefined, INK_COLLECTIONS.filter((c) => !c.custom))?.name ?? UNNAMED_CUSTOM
   update([...colors, { name, hex: h }])
-  editor.toast(`Added ${name === UNNAMED_CUSTOM ? h : name} to Custom`)
+  editor.toast(`Saved ${name === UNNAMED_CUSTOM ? h : name} to Custom`)
 }
 
 export function removeCustomColor(hex: string) {

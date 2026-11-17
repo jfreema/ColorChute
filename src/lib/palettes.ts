@@ -270,7 +270,7 @@ export const INK_COLLECTIONS: InkCollection[] = [
   { id: 'epic', name: 'Epic Sports', about: 'The 40 colors Epic prints', colors: EPIC_COLORS },
   { id: 'common', name: 'Common colors', about: 'Stock ink colors most print shops carry', colors: COMMON_INKS },
   { id: 'ninja', name: 'Ninja Transfers', about: 'Ninja’s screen print ink colors', colors: NINJA_INKS },
-  { id: 'custom', name: 'Custom', about: 'Your own colors, saved to your account', colors: CUSTOM_STARTERS, custom: true },
+  { id: 'custom', name: 'Custom', about: 'Your own colors, saved to your account. Mix one with +, then save it.', colors: CUSTOM_STARTERS, custom: true },
   { id: 'pastels', name: 'Pastels', about: 'Soft pastel and Easter colors', colors: PASTELS, theme: true },
   { id: '1980s', name: '1980s', about: '1980s neon, synthwave and vaporwave colors', colors: EIGHTIES, theme: true },
   { id: '1970s', name: '1970s', about: 'Earthy vintage 1970s colors', colors: SEVENTIES, theme: true },
