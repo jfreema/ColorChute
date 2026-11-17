@@ -1,4 +1,5 @@
 import { normalizeHex } from '../lib/color'
+import { GARMENTS, type Garment } from '../lib/shirt'
 import type { Rect } from './pixels'
 import type { PreviewMode, PreviewSettings } from './store'
 
@@ -45,6 +46,9 @@ export function parseLink(href: string): DesignLink | null {
   }
   const shirt = color('shirt')
   if (shirt) link.preview.shirtColor = shirt
+  // A shirt link always says what it was on, so a hoodie someone has open doesn't stay on a t-shirt link
+  const garment = q.get('garment') as Garment | null
+  if (link.preview.mode && link.preview.mode !== 'square') link.preview.garment = garment && GARMENTS.includes(garment) ? garment : 'tee'
   const square = q.get('square') === 'clear' ? 'transparent' : color('square')
   if (square) link.preview.boardColor = square
   const behind = color('behind')
@@ -70,6 +74,7 @@ export function buildLink(origin: string, kind: 's' | 'p', id: string, opts: {
   if (p.mode === 'square') q.push(['square', p.boardColor === 'transparent' ? 'clear' : hex(p.boardColor)])
   else {
     q.push(['shirt', hex(p.shirtColor)])
+    if (p.garment && p.garment !== 'tee') q.push(['garment', p.garment])
     if (p.sizeMode === 'fit') q.push(['print', 'fill'])
   }
   q.push(['behind', hex(p.stageColor)])

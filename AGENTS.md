@@ -77,6 +77,12 @@ Fake values are fine: insert a user and a session (`token_hash` is the SHA-256 h
 - **Mockups show an adult M as worn** (`UNITS_PER_INCH` in `src/lib/shirt.ts`): about 16 in of chest faces forward,
   so 11 in art covers about two thirds of it, as in Jared's photos of real Epic prints. Don't scale it to the 20 in
   flat width; Jared found that too small.
+- **Hoodies and crewnecks come from the shirt color group** (Jared, 2026-11-17). A `ShirtCollection` with a
+  `garment` (`'hoodie'` for the Gildan G125, `'crew'` for the G180) switches the preview to that drawing
+  (`basicShirt(color, camo, garment)` in `src/lib/shirt.ts`); `preview.garment` keeps it and share links send
+  `garment=`. Each garment has its own print top (`printTop`), 3 in below its neckline, at the same inch scale. Only
+  the tee has a realistic studio photo (`studioFor`); the others show their drawing under Realistic until they get
+  photo layers like `public/shirt`.
 - **A saved mockup is the stage as it is** (Jared, 2026-11-15). Save image on the stage (shirt backgrounds only) and
   the Export dialog's Mockup button both call `saveMockup` in `exporting.ts`: the whole document placed and sized as
   the stage has it, on the preview's shirt color, with hidden inks left out, never the export's background color.

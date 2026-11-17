@@ -7,7 +7,7 @@ import { hideInks, Rect } from '../editor/pixels'
 import { outlineSegments, SelectMode } from '../editor/selection'
 import { editor, useEditor } from '../editor/store'
 import {
-  basicShirt, PRINT_CENTER_X, PRINT_TOP, printScale, SHIRT_H, SHIRT_W, STUDIO, studioLightOpacity, svgUrl,
+  basicShirt, GARMENT_LABEL, PRINT_CENTER_X, printScale, printTop, SHIRT_H, SHIRT_W, studioFor, studioLightOpacity, svgUrl,
 } from '../lib/shirt'
 import { CAMO_TILE } from '../lib/camo'
 import { shirtBackground, shirtCamo } from '../lib/palettes'
@@ -78,6 +78,9 @@ export function Stage({ onDropFiles, focus, onToggleFocus, onSaveMockup }: {
 
   // MARK: Scene layout, in document pixels
 
+  const garment = preview.garment ?? 'tee'
+  // The realistic background is a studio photo, which only some garments have; the rest show their drawing
+  const photo = preview.mode === 'realistic' ? studioFor(garment) : null
   const scene = useMemo(() => {
     if (preview.mode === 'square') {
       const side = Math.max(width, height) * 1.12
@@ -86,14 +89,15 @@ export function Stage({ onDropFiles, focus, onToggleFocus, onSaveMockup }: {
     }
     const s = printScale(width, height, dpi, preview.sizeMode)
     // shirt units to document pixels, with the print area's top center on the art's top center
-    const toDoc = (r: Rect) => ({ x: width / 2 + (r.x - PRINT_CENTER_X) / s, y: (r.y - PRINT_TOP) / s, w: r.w / s, h: r.h / s })
-    if (preview.mode === 'realistic') {
-      const studio = toDoc(STUDIO.rect)
+    const top = printTop(garment)
+    const toDoc = (r: Rect) => ({ x: width / 2 + (r.x - PRINT_CENTER_X) / s, y: (r.y - top) / s, w: r.w / s, h: r.h / s })
+    if (photo) {
+      const studio = toDoc(photo.rect)
       return { bounds: studio, board: null, shirt: null, studio }
     }
     const shirt = toDoc({ x: 0, y: 0, w: SHIRT_W, h: SHIRT_H })
     return { bounds: shirt, board: null, shirt, studio: null }
-  }, [preview.mode, preview.sizeMode, width, height, dpi])
+  }, [preview.mode, preview.sizeMode, garment, photo, width, height, dpi])
 
   const fit = useCallback(() => {
     const b = frame.current ?? scene.bounds
@@ -118,7 +122,7 @@ export function Stage({ onDropFiles, focus, onToggleFocus, onSaveMockup }: {
   }, [])
 
   // Refit when the document or background changes shape
-  useEffect(fitAll, [width, height, preview.mode, preview.sizeMode, size.w > 0 && size.h > 0]) // eslint-disable-line
+  useEffect(fitAll, [width, height, preview.mode, preview.sizeMode, garment, size.w > 0 && size.h > 0]) // eslint-disable-line
 
   // A design link's view: fill the stage with what its sender saw. (After the refit above, which a link's new
   // background can set off in the same render.)
@@ -429,10 +433,10 @@ export function Stage({ onDropFiles, focus, onToggleFocus, onSaveMockup }: {
     left: x + r.x * zoom, top: y + r.y * zoom, width: r.w * zoom, height: r.h * zoom,
   })
   const basicShirtUrl = useMemo(
-    () => (preview.mode === 'shirt' ? svgUrl(basicShirt(preview.shirtColor, shirtCamo(preview.shirtColor))) : null),
-    [preview.mode, preview.shirtColor],
+    () => (scene.shirt ? svgUrl(basicShirt(preview.shirtColor, shirtCamo(preview.shirtColor), garment)) : null),
+    [scene.shirt, preview.shirtColor, garment],
   )
-  const studioMask = `url(${STUDIO.shade})`
+  const studioMask = photo ? `url(${photo.shade})` : undefined
 
   const cursorStyle =
     space || tool === 'hand' ? (drag.current?.kind === 'pan' ? 'grabbing' : 'grab')
@@ -476,11 +480,11 @@ export function Stage({ onDropFiles, focus, onToggleFocus, onSaveMockup }: {
         />
       )}
       {scene.shirt && basicShirtUrl && <img className="layer-img" alt="" src={basicShirtUrl} style={place(scene.shirt)} />}
-      {scene.studio && (
+      {scene.studio && photo && (
         <>
-          <img className="layer-img" alt="" src={STUDIO.backdrop} style={place(scene.studio)} />
+          <img className="layer-img" alt="" src={photo.backdrop} style={place(scene.studio)} />
           <div className="layer-img" style={{
-            ...place(scene.studio), background: shirtBackground(preview.shirtColor, CAMO_TILE * (scene.studio.w / STUDIO.rect.w) * zoom),
+            ...place(scene.studio), background: shirtBackground(preview.shirtColor, CAMO_TILE * (scene.studio.w / photo.rect.w) * zoom),
             WebkitMaskImage: studioMask, maskImage: studioMask, WebkitMaskSize: '100% 100%', maskSize: '100% 100%',
           }} />
         </>
@@ -493,10 +497,10 @@ export function Stage({ onDropFiles, focus, onToggleFocus, onSaveMockup }: {
           imageRendering: zoom >= 2 ? 'pixelated' : 'auto',
         }}
       />
-      {scene.studio && (
+      {scene.studio && photo && (
         <>
-          <img className="layer-img blend-multiply" alt="" src={STUDIO.shade} style={place(scene.studio)} />
-          <img className="layer-img blend-screen" alt="" src={STUDIO.light}
+          <img className="layer-img blend-multiply" alt="" src={photo.shade} style={place(scene.studio)} />
+          <img className="layer-img blend-screen" alt="" src={photo.light}
             style={{ ...place(scene.studio), opacity: studioLightOpacity(preview.shirtColor) }} />
         </>
       )}
@@ -506,11 +510,13 @@ export function Stage({ onDropFiles, focus, onToggleFocus, onSaveMockup }: {
         <div className="segmented" role="radiogroup" aria-label="Background">
           {([
             ['square', 'Square', <Square size={13} key="s" />],
-            ['shirt', 'T-shirt', <Shirt size={13} key="t" />],
+            ['shirt', GARMENT_LABEL[garment], <Shirt size={13} key="t" />],
             ['realistic', 'Realistic', <Shirt size={13} key="r" fill="currentColor" />],
           ] as const).map(([m, label, icon]) => (
             <button key={m} className={preview.mode === m ? 'active' : ''} role="radio" aria-checked={preview.mode === m}
-              onClick={() => editor.setPreview({ mode: m })} title={`${label} background (${m === 'square' ? 1 : m === 'shirt' ? 2 : 3})`}>
+              onClick={() => editor.setPreview({ mode: m })}
+              title={`${label} background (${m === 'square' ? 1 : m === 'shirt' ? 2 : 3})` +
+                (m === 'realistic' && !studioFor(garment) ? `. ${GARMENT_LABEL[garment]}s show their drawing for now` : '')}>
               {icon} <span className="lbl">{label}</span>
             </button>
           ))}

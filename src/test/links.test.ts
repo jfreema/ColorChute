@@ -16,7 +16,9 @@ describe('design links', () => {
     expect(link.kind).toBe('s')
     expect(link.id).toBe('Ab_c-123')
     expect(link.option).toBe('Lmhz1')
-    expect(link.preview).toEqual({ mode: 'realistic', sizeMode: 'actual', shirtColor: '#0A2041', stageColor: '#DCE6FF' })
+    expect(link.preview).toEqual({
+      mode: 'realistic', sizeMode: 'actual', shirtColor: '#0A2041', garment: 'tee', stageColor: '#DCE6FF',
+    })
     expect(link.frame).toEqual({ x: -120, y: 31, w: 1600, h: 900 })
   })
 
@@ -27,6 +29,15 @@ describe('design links', () => {
     expect(sq.frame).toBeUndefined()
     const fill = parseLink(buildLink('https://x.y', 'p', 'pub1', { preview: { ...preview, mode: 'shirt', sizeMode: 'fit' } }))!
     expect(fill.preview.sizeMode).toBe('fit')
+  })
+
+  it('sends a hoodie or crewneck, and reads a shirt link without one as a t-shirt', () => {
+    const href = buildLink('https://x.y', 's', 'tok', { preview: { ...preview, mode: 'shirt', garment: 'hoodie' } })
+    expect(href).toBe('https://x.y/s/tok?bg=shirt&shirt=0a2041&garment=hoodie&behind=dce6ff')
+    expect(parseLink(href)!.preview.garment).toBe('hoodie')
+    expect(parseLink('https://x.y/s/tok?bg=shirt&shirt=0a2041')!.preview.garment).toBe('tee')
+    expect(parseLink('https://x.y/s/tok?bg=shirt&garment=cape')!.preview.garment).toBe('tee')
+    expect(parseLink('https://x.y/s/tok?bg=square&garment=crew')!.preview.garment).toBeUndefined()
   })
 
   it('ignores addresses that are not links and settings that are bad', () => {

@@ -4,9 +4,10 @@ import { epicColorName, nearestEpicColor, shirtCamo, shirtColorName } from '../l
 import { DEFAULT_DPI, ExportSettings, slug, TARGETS } from '../lib/printSpecs'
 import { setPngDpi } from '../lib/png'
 import {
-  basicShirt, loadImage, loadSvg, PRINT_CENTER_X, PRINT_TOP, printScale, SHIRT_H, SHIRT_W, STUDIO,
+  basicShirt, loadImage, loadSvg, PRINT_CENTER_X, printScale, printTop, SHIRT_H, SHIRT_W, studioFor,
   studioLightOpacity,
 } from '../lib/shirt'
+import type { Garment } from '../lib/shirt'
 import { makeZip } from '../lib/zip'
 import { ctx2d, makeCanvas, readPixels } from './doc'
 import { Check, designInks, inkColors, orderNote, screenChecks, shirtChecks } from './checks'
@@ -132,14 +133,16 @@ export async function renderMockup(
   art: HTMLCanvasElement, preview: PreviewSettings, dpi: number | null, sizeMode?: PreviewSettings['sizeMode'],
 ): Promise<HTMLCanvasElement> {
   const k = 1.6
-  const realistic = preview.mode === 'realistic'
+  const garment = preview.garment ?? 'tee'
+  // Only garments with a studio photo have a realistic mockup; the others use their drawing
+  const studio = preview.mode === 'realistic' ? studioFor(garment) : null
   // The picture's frame in shirt units: the studio photo, or the drawn shirt's box
-  const f = realistic ? STUDIO.rect : { x: 0, y: 0, w: SHIRT_W, h: SHIRT_H }
+  const f = studio ? studio.rect : { x: 0, y: 0, w: SHIRT_W, h: SHIRT_H }
   const c = makeCanvas(Math.round(f.w * k), Math.round(f.h * k))
   const g = ctx2d(c)
   g.imageSmoothingQuality = 'high'
-  if (realistic) {
-    const [backdrop, shade, light] = await Promise.all([STUDIO.backdrop, STUDIO.shade, STUDIO.light].map(loadImage))
+  if (studio) {
+    const [backdrop, shade, light] = await Promise.all([studio.backdrop, studio.shade, studio.light].map(loadImage))
     g.drawImage(backdrop, 0, 0, c.width, c.height)
     // the shirt: its color, cut to the shirt's outline
     const fabric = makeCanvas(c.width, c.height)
@@ -153,7 +156,7 @@ export async function renderMockup(
     fg.globalCompositeOperation = 'destination-in'
     fg.drawImage(shade, 0, 0, c.width, c.height)
     g.drawImage(fabric, 0, 0)
-    drawArt(g, art, dpi, f, k, sizeMode)
+    drawArt(g, art, dpi, f, k, garment, sizeMode)
     g.globalCompositeOperation = 'multiply'
     g.drawImage(shade, 0, 0, c.width, c.height)
     g.globalCompositeOperation = 'screen'
@@ -164,8 +167,9 @@ export async function renderMockup(
   } else {
     g.fillStyle = preview.stageColor
     g.fillRect(0, 0, c.width, c.height)
-    g.drawImage(await loadSvg(basicShirt(preview.shirtColor, shirtCamo(preview.shirtColor))), 0, 0, c.width, c.height)
-    drawArt(g, art, dpi, f, k, sizeMode)
+    const drawing = basicShirt(preview.shirtColor, shirtCamo(preview.shirtColor), garment)
+    g.drawImage(await loadSvg(drawing), 0, 0, c.width, c.height)
+    drawArt(g, art, dpi, f, k, garment, sizeMode)
   }
   return c
 }
@@ -173,11 +177,11 @@ export async function renderMockup(
 /** Puts the art on the mockup's print area, at print size when the DPI is known */
 function drawArt(
   g: CanvasRenderingContext2D, art: HTMLCanvasElement, dpi: number | null, f: { x: number; y: number }, k: number,
-  sizeMode?: PreviewSettings['sizeMode'],
+  garment: Garment, sizeMode?: PreviewSettings['sizeMode'],
 ) {
   const s = printScale(art.width, art.height, dpi ?? DEFAULT_DPI, sizeMode ?? (dpi ? 'actual' : 'fit')) * k
   const w = art.width * s, h = art.height * s
-  g.drawImage(art, (PRINT_CENTER_X - f.x) * k - w / 2, (PRINT_TOP - f.y) * k, w, h)
+  g.drawImage(art, (PRINT_CENTER_X - f.x) * k - w / 2, (printTop(garment) - f.y) * k, w, h)
 }
 
 /** The whole document as the stage shows it: inks hidden on screen are left out, so the shirt shows through */

@@ -9,6 +9,7 @@ import {
   shirtCollection, shirtCollectionGroups, shirtColorName, shirtSwatchBackground, withCustomColors,
 } from '../lib/palettes'
 import { EPIC } from '../lib/printSpecs'
+import { GARMENT_LABEL, studioFor } from '../lib/shirt'
 import { ColorInput } from './ColorInput'
 import { ArrowDown, ArrowUp, Copy, Eye, EyeOff, ImagePlus, Merge, Plus, Trash2 } from './icons'
 
@@ -362,7 +363,10 @@ function PreviewPanel() {
     <>
       <div className="section-label">
         Preview
-        <span className="sub">{p.mode === 'square' ? 'Square' : p.mode === 'shirt' ? 'T-shirt' : 'Realistic shirt'}</span>
+        <span className="sub">
+          {p.mode === 'square' ? 'Square'
+            : p.mode === 'realistic' && studioFor(p.garment) ? 'Realistic shirt' : GARMENT_LABEL[p.garment ?? 'tee']}
+        </span>
       </div>
       <div className="card">
         {p.mode === 'square' ? (
@@ -385,7 +389,9 @@ function PreviewPanel() {
               <div className="row tight" style={{ marginBottom: 6 }}>
                 <b className="grow">Shirt color</b>
                 <select className="field small" value={collection.id} title={collection.shirt} aria-label="Shirt colors from"
-                  onChange={(e) => editor.setPreview({ shirtCollection: e.target.value })}>
+                  onChange={(e) => editor.setPreview({
+                    shirtCollection: e.target.value, garment: shirtCollection(e.target.value).garment ?? 'tee',
+                  })}>
                   {shirtCollectionGroups().map((g) => {
                     const options = g.collections.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)
                     return g.family ? <optgroup key={g.family} label={g.family}>{options}</optgroup> : options

@@ -4,10 +4,11 @@ import { save, share, unshare, useDesigns } from '../editor/designs'
 import { buildLink, stageView } from '../editor/links'
 import { editor, useEditor } from '../editor/store'
 import { shirtColorName } from '../lib/palettes'
+import { GARMENT_LABEL, studioFor } from '../lib/shirt'
 import { Dialog } from './Dialog'
 import { Check, Copy, Link2, Link2Off, Save, Share2 } from './icons'
 
-const BACKGROUNDS = { square: 'Square', shirt: 'T-shirt', realistic: 'Realistic shirt' }
+const BACKGROUNDS = { square: 'Square', realistic: 'Realistic shirt' }
 
 /**
  * A link to the open design that anyone can open without signing in, set to open the way it looks now: same color
@@ -63,7 +64,8 @@ export function ShareDialog({ onClose }: { onClose: () => void }) {
   const shirt = shirtColorName(preview.shirtColor, preview.shirtCollection)
   const look = preview.mode === 'square'
     ? `${BACKGROUNDS.square} background`
-    : `${BACKGROUNDS[preview.mode]}, ${shirt?.name ?? preview.shirtColor.toUpperCase()}`
+    : `${preview.mode === 'realistic' && studioFor(preview.garment) ? BACKGROUNDS.realistic
+      : GARMENT_LABEL[preview.garment ?? 'tee']}, ${shirt?.name ?? preview.shirtColor.toUpperCase()}`
 
   if (!designId) {
     return (

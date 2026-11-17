@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from 'react'
 import { hexToRgba, normalizeHex, RGBA } from '../lib/color'
 import { DEFAULT_DPI, SHIRT_CANVAS } from '../lib/printSpecs'
+import type { Garment } from '../lib/shirt'
 import { ctx2d, Layer, makeCanvas, makeLayer, newId, readPixels } from './doc'
 import { DocState, History } from './history'
 import {
@@ -28,6 +29,8 @@ export interface PreviewSettings {
   shirtColor: string
   /** Which blank's color list the shirt swatches show */
   shirtCollection?: string
+  /** What the shirt backgrounds draw; picking a color group sets it. A t-shirt when missing. */
+  garment?: Garment
   /** Behind everything */
   stageColor: string
   /** 'fit' fills the chest print area; 'actual' sizes the print from the document's DPI */

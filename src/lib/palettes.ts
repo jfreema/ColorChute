@@ -1,5 +1,6 @@
 import { camoTileUrl } from './camo'
 import { deltaE } from './color'
+import type { Garment } from './shirt'
 
 export interface Swatch {
   name: string
@@ -328,6 +329,8 @@ export interface ShirtCollection {
   shirt: string
   /** Groups one shirt's shared, adult-only, youth-only and extra color lists in the picker */
   family?: string
+  /** What the mockup draws for this blank; a t-shirt when missing */
+  garment?: Garment
   colors: Swatch[]
 }
 
@@ -643,6 +646,63 @@ const GILDAN_G200_CATALOG_ONLY: Swatch[] = [
   { name: 'PFD White', hex: '#F2F1EC' },
 ]
 
+/** Gildan DryBlend G125 hoodie, as Ninja POD sells it. Hexes read from the photos on its Ninja page (Nov 2026). */
+const GILDAN_G125: Swatch[] = [
+  { name: 'White', hex: '#F3F3F5' },
+  { name: 'Ash', hex: '#E5E5E7' },
+  { name: 'Sport Grey', hex: '#BFBFBF' },
+  { name: 'Charcoal', hex: '#464644' },
+  { name: 'Black', hex: '#252525' },
+  { name: 'Red', hex: '#B51529' },
+  { name: 'Maroon', hex: '#480220' },
+  { name: 'Navy', hex: '#1D2339' },
+  { name: 'Royal', hex: '#1661B5' },
+  { name: 'Forest Green', hex: '#223030' },
+  { name: 'Safety Green', hex: '#E3F409' },
+  { name: 'Safety Orange', hex: '#FE8002' },
+]
+
+/** Gildan Heavy Blend G180 crewneck sweatshirt, as Ninja POD sells it. Hexes read from its Ninja photos (Nov 2026). */
+const GILDAN_G180: Swatch[] = [
+  { name: 'White', hex: '#F7F7F7' },
+  { name: 'Ash', hex: '#EAEAEA' },
+  { name: 'Sport Grey', hex: '#B7B7B7' },
+  { name: 'Graphite Heather', hex: '#787878' },
+  { name: 'Dark Heather', hex: '#474C52' },
+  { name: 'Charcoal', hex: '#494947' },
+  { name: 'Black', hex: '#212121' },
+  { name: 'Red', hex: '#BB182B' },
+  { name: 'Cherry Red', hex: '#A20B2E' },
+  { name: 'Heather Sport Scarlet Red', hex: '#C16670' },
+  { name: 'Antique Cherry Red', hex: '#7F232E' },
+  { name: 'Cardinal Red', hex: '#7E1029' },
+  { name: 'Garnet', hex: '#611320' },
+  { name: 'Maroon', hex: '#4D0626' },
+  { name: 'Heather Sport Dark Maroon', hex: '#7D6166' },
+  { name: 'Safety Pink', hex: '#FD689D' },
+  { name: 'Heliconia', hex: '#E84682' },
+  { name: 'Light Pink', hex: '#FBD5EA' },
+  { name: 'Purple', hex: '#3D1F5D' },
+  { name: 'Light Blue', hex: '#C1DDFC' },
+  { name: 'Carolina Blue', hex: '#6D9DCE' },
+  { name: 'Sapphire', hex: '#0383C4' },
+  { name: 'Royal', hex: '#0E5CB1' },
+  { name: 'Heather Sport Royal', hex: '#4660B3' },
+  { name: 'Indigo Blue', hex: '#4C5C73' },
+  { name: 'Heather Sport Dark Navy', hex: '#4D536D' },
+  { name: 'Navy', hex: '#23283C' },
+  { name: 'Irish Green', hex: '#039451' },
+  { name: 'Heather Sport Dark Green', hex: '#5D726B' },
+  { name: 'Military Green', hex: '#4E5746' },
+  { name: 'Forest Green', hex: '#1E2E2B' },
+  { name: 'Safety Green', hex: '#E6F807' },
+  { name: 'Gold', hex: '#FDC407' },
+  { name: 'Safety Orange', hex: '#FD7E08' },
+  { name: 'Orange', hex: '#DC5A1C' },
+  { name: 'Sand', hex: '#E2D5C5' },
+  { name: 'Dark Chocolate', hex: '#2A2017' },
+]
+
 const GILDAN_5000: Swatch[] = [
   { name: 'White', hex: '#F0F0F0' },
   { name: 'Off White', hex: '#EDE9D6' },
@@ -731,6 +791,7 @@ const A4 = 'A4 moisture wicking'
 const ST350 = 'Sport-Tek ST350 PosiCharge (Ninja POD)'
 const JERZEES = 'Jerzees Dri-Power 29M and 29B (Ninja POD)'
 const GILDAN_UC = 'Gildan Ultra Cotton G200 and G200B (Ninja POD)'
+const SWEATSHIRTS = 'Gildan sweatshirts (Ninja POD)'
 
 export const SHIRT_COLLECTIONS: ShirtCollection[] = [
   { id: 'epic', name: 'Epic Sports cool tee', shirt: 'Epic Cool Performance Dry-Fit Crew Tee, adult and youth, from Epic Sports',
@@ -766,6 +827,10 @@ export const SHIRT_COLLECTIONS: ShirtCollection[] = [
   { id: 'gildan-uc-catalog-only', name: 'G200 catalog only', family: GILDAN_UC, colors: GILDAN_G200_CATALOG_ONLY,
     shirt: "Gildan Ultra Cotton G200 Tee: adult colors in Ninja POD's catalog that its public site doesn't show" },
   { id: 'gildan', name: 'Gildan heavy tee', shirt: 'Gildan 5000 Heavy Cotton Tee', colors: GILDAN_5000 },
+  { id: 'g125', name: 'DryBlend Hoodie', family: SWEATSHIRTS, garment: 'hoodie', colors: GILDAN_G125,
+    shirt: 'Gildan DryBlend G125 Hoodie, from Ninja POD' },
+  { id: 'g180', name: 'Heavy Blend Crew', family: SWEATSHIRTS, garment: 'crew', colors: GILDAN_G180,
+    shirt: 'Gildan Heavy Blend G180 Crewneck Sweatshirt, from Ninja POD' },
   { id: 'basic', name: 'Basic', shirt: 'Common shirt colors', colors: SHIRT_COLORS },
 ]
 
