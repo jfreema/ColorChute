@@ -35,3 +35,24 @@ export function cleanCustomColors(input: unknown): CustomColor[] | null {
   }
   return out
 }
+
+/**
+ * A saved list brought up to date with starter batches added since it was saved: `seen` is how many batches the list
+ * had seen. New colors go on the end, skipping any already there; colors someone removed from older batches stay out.
+ */
+export function addNewStarters(list: CustomColor[], seen: number, batches: CustomColor[][]): CustomColor[] {
+  const out = [...list]
+  const have = new Set(list.map((c) => c.hex.toUpperCase()))
+  for (const c of batches.slice(Math.max(0, seen)).flat()) {
+    if (out.length >= MAX_CUSTOM_COLORS) break
+    if (have.has(c.hex.toUpperCase())) continue
+    have.add(c.hex.toUpperCase())
+    out.push(c)
+  }
+  return out
+}
+
+/** How many starter batches a saved list has seen. Lists saved before batches were counted saw the first one. */
+export function cleanSeen(input: unknown): number {
+  return typeof input === 'number' && Number.isInteger(input) && input >= 1 && input <= 1000 ? input : 1
+}

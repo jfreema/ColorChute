@@ -229,27 +229,41 @@ const BEAST_PRIME: Swatch[] = [
 ]
 
 /**
- * What the Custom group starts with (Jared, Nov 16, 2026): colors read from two of his photos, a marker sketch of a
- * U-joint and a pastel cotton candy machine. Each is the median of a well-lit patch; the machine's periwinkle window
- * was dropped as too close to Marker Violet. People change their own copy of this list in the app.
+ * What the Custom group starts with, in the batches Jared asked for. A batch added later also reaches lists people
+ * already changed, once (see customColorList.ts). Each color is the median of a well-lit patch of his photos.
  */
-export const CUSTOM_STARTERS: Swatch[] = [
-  { name: 'Marker Yellow', hex: '#E5EA84' },
-  { name: 'Marker Orange', hex: '#E88939' },
-  { name: 'Marker Rose', hex: '#DE7790' },
-  { name: 'Marker Magenta', hex: '#C8498C' },
-  { name: 'Marker Orchid', hex: '#A645B2' },
-  { name: 'Marker Violet', hex: '#977ACE' },
-  { name: 'Marker Blue', hex: '#4DA3E3' },
-  { name: 'Marker Mint', hex: '#A8E4D0' },
-  { name: 'Marker Green', hex: '#93CE47' },
-  { name: 'Marker Tan', hex: '#E0D0A3' },
-  { name: 'Candy Pink', hex: '#E8AEBC' },
-  { name: 'Candy Lilac', hex: '#EED9FC' },
-  { name: 'Candy Blue', hex: '#7BB1C8' },
-  { name: 'Candy Yellow', hex: '#F8DB62' },
-  { name: 'Candy Gold', hex: '#D8A538' },
+export const CUSTOM_STARTER_BATCHES: Swatch[][] = [
+  // Nov 16, 2026: a marker sketch of a U-joint and a pastel cotton candy machine. The machine's periwinkle window was
+  // dropped as too close to Marker Violet.
+  [
+    { name: 'Marker Yellow', hex: '#E5EA84' },
+    { name: 'Marker Orange', hex: '#E88939' },
+    { name: 'Marker Rose', hex: '#DE7790' },
+    { name: 'Marker Magenta', hex: '#C8498C' },
+    { name: 'Marker Orchid', hex: '#A645B2' },
+    { name: 'Marker Violet', hex: '#977ACE' },
+    { name: 'Marker Blue', hex: '#4DA3E3' },
+    { name: 'Marker Mint', hex: '#A8E4D0' },
+    { name: 'Marker Green', hex: '#93CE47' },
+    { name: 'Marker Tan', hex: '#E0D0A3' },
+    { name: 'Candy Pink', hex: '#E8AEBC' },
+    { name: 'Candy Lilac', hex: '#EED9FC' },
+    { name: 'Candy Blue', hex: '#7BB1C8' },
+    { name: 'Candy Yellow', hex: '#F8DB62' },
+    { name: 'Candy Gold', hex: '#D8A538' },
+  ],
+  // Nov 18, 2026: a seafoam swatch and a pair of batting gloves (sky blue and tan leather, navy laces, a royal blue
+  // bolt). Glove Tan sits close to Marker Tan; Jared asked for both.
+  [
+    { name: 'Seafoam', hex: '#79C29F' },
+    { name: 'Glove Sky Blue', hex: '#4CA9C2' },
+    { name: 'Glove Tan', hex: '#E9D2B1' },
+    { name: 'Glove Navy', hex: '#0B1B31' },
+    { name: 'Glove Bolt Blue', hex: '#204C8F' },
+  ],
 ]
+
+export const CUSTOM_STARTERS: Swatch[] = CUSTOM_STARTER_BATCHES.flat()
 
 export interface InkCollection {
   id: string

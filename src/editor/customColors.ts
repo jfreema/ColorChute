@@ -1,14 +1,14 @@
 import { useSyncExternalStore } from 'react'
 import { api, sendJson } from '../lib/api'
 import { normalizeHex } from '../lib/color'
-import { cleanCustomColors, CustomColor, MAX_CUSTOM_COLORS, UNNAMED_CUSTOM } from '../lib/customColorList'
-import { CUSTOM_STARTERS, INK_COLLECTIONS, inkColorName } from '../lib/palettes'
+import { addNewStarters, cleanCustomColors, cleanSeen, CustomColor, MAX_CUSTOM_COLORS, UNNAMED_CUSTOM } from '../lib/customColorList'
+import { CUSTOM_STARTER_BATCHES, CUSTOM_STARTERS, INK_COLLECTIONS, inkColorName } from '../lib/palettes'
 import { canSave, getAccount, onAccountChange } from './account'
 import { editor } from './store'
 
 /**
  * The colors in the person's Custom print color group (Jared, 2026-11-16). Each account keeps its own list on the
- * server; one that never changed it sees CUSTOM_STARTERS. A copy in this browser shows the list right away on the
+ * server; one that never changed it sees CUSTOM_STARTERS, and a batch of starters added later joins saved lists once. A copy in this browser shows the list right away on the
  * next visit, before the server answers.
  */
 let colors: CustomColor[] = CUSTOM_STARTERS
@@ -69,12 +69,22 @@ async function fetchList() {
   loadedFor = null
   set(readCache(user.id) ?? CUSTOM_STARTERS)
   try {
-    const r = await api<{ colors: unknown }>('/api/me/colors')
+    const r = await api<{ colors: unknown; seen?: unknown }>('/api/me/colors')
     if (getAccount().user?.id !== user.id) return
-    const list = cleanCustomColors(r.colors) ?? CUSTOM_STARTERS
+    const saved = cleanCustomColors(r.colors)
     loadedFor = user.id
-    set(list)
-    writeCache(list)
+    if (!saved) {
+      set(CUSTOM_STARTERS)
+      writeCache(CUSTOM_STARTERS)
+      return
+    }
+    // Starting colors added since this list was saved join it once, then stay as the person leaves them
+    const seen = cleanSeen(r.seen)
+    if (seen < CUSTOM_STARTER_BATCHES.length) update(addNewStarters(saved, seen, CUSTOM_STARTER_BATCHES))
+    else {
+      set(saved)
+      writeCache(saved)
+    }
   } catch {
     // Offline or the server hiccupped: keep what's showing and ask again when the window is next focused
   }
@@ -105,7 +115,7 @@ function update(next: CustomColor[]) {
   if (!canSave()) return
   writeCache(next)
   saving = saving
-    .then(() => sendJson('/api/me/colors', { colors: next }, 'PUT'))
+    .then(() => sendJson('/api/me/colors', { colors: next, seen: CUSTOM_STARTER_BATCHES.length }, 'PUT'))
     .catch((e: Error) => editor.toast(`Couldn't save your Custom colors. ${e.message}`))
 }
 

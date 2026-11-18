@@ -15,7 +15,7 @@
  * itself only to add link-preview tags (the design's name and picture) to the app's index.html.
  */
 
-import { cleanCustomColors, MAX_CUSTOM_COLORS } from '../src/lib/customColorList'
+import { cleanCustomColors, cleanSeen, MAX_CUSTOM_COLORS } from '../src/lib/customColorList'
 
 interface Env {
   ASSETS: Fetcher
@@ -162,7 +162,8 @@ function schema(env: Env) {
     env.DB.prepare(`CREATE TABLE IF NOT EXISTS share_links (
       id TEXT PRIMARY KEY, user_id TEXT NOT NULL, design_id TEXT NOT NULL, created_at INTEGER NOT NULL,
       UNIQUE (user_id, design_id))`),
-    // Each account's Custom print colors, as a JSON list of { name, hex }. No row means the starting colors.
+    // Each account's Custom print colors, as JSON { seen, colors: [{ name, hex }] } (older rows: the bare list).
+    // No row means the starting colors.
     env.DB.prepare(`CREATE TABLE IF NOT EXISTS custom_colors (
       user_id TEXT PRIMARY KEY, colors TEXT NOT NULL, updated_at INTEGER NOT NULL)`),
   ]).catch((e) => {
@@ -262,14 +263,21 @@ async function adminUpdate(req: Request, env: Env, admin: UserRow, id: string) {
 
 // MARK: Custom colors
 
-/** The account's Custom colors, or null if it never changed them (the app then shows the starting colors) */
+/**
+ * The account's Custom colors, or null if it never changed them (the app then shows the starting colors), and how
+ * many batches of starting colors the list has seen. Rows saved before that count was kept are a bare list.
+ */
 async function getCustomColors(env: Env, u: UserRow) {
   const r = await env.DB.prepare('SELECT colors FROM custom_colors WHERE user_id = ?').bind(u.id).first<{ colors: string }>()
-  return json({ colors: r ? cleanCustomColors(JSON.parse(r.colors)) : null })
+  if (!r) return json({ colors: null })
+  const saved = JSON.parse(r.colors)
+  return Array.isArray(saved)
+    ? json({ colors: cleanCustomColors(saved), seen: 1 })
+    : json({ colors: cleanCustomColors(saved?.colors), seen: cleanSeen(saved?.seen) })
 }
 
 async function putCustomColors(req: Request, env: Env, u: UserRow) {
-  const { colors } = await readJson<{ colors?: unknown }>(req, 20_000)
+  const { colors, seen } = await readJson<{ colors?: unknown; seen?: unknown }>(req, 20_000)
   if (Array.isArray(colors) && colors.length > MAX_CUSTOM_COLORS) {
     throw new HttpError(400, `Custom holds up to ${MAX_CUSTOM_COLORS} colors`)
   }
@@ -278,7 +286,7 @@ async function putCustomColors(req: Request, env: Env, u: UserRow) {
   await env.DB.prepare(
     `INSERT INTO custom_colors (user_id, colors, updated_at) VALUES (?, ?, ?)
      ON CONFLICT (user_id) DO UPDATE SET colors = excluded.colors, updated_at = excluded.updated_at`,
-  ).bind(u.id, JSON.stringify(list), Date.now()).run()
+  ).bind(u.id, JSON.stringify({ seen: cleanSeen(seen), colors: list }), Date.now()).run()
   return json({ ok: true })
 }
 

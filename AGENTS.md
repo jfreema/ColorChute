@@ -90,7 +90,8 @@ Fake values are fine: insert a user and a session (`token_hash` is the SHA-256 h
 - **Custom print colors belong to each account** (Jared, 2026-11-16). The Custom group in the fill color palette
   starts with `CUSTOM_STARTERS` (colors read from two of Jared's photos). Once someone adds or removes one, their
   whole list is saved in the `custom_colors` table (`/api/me/colors`), and from then on that list is the group.
-  Changing the starters only reaches accounts that never edited theirs.
+  To give everyone new colors, add a batch to `CUSTOM_STARTER_BATCHES`: a saved list records how many batches it has
+  seen (`seen`), and the app appends newer batches to it once. Never edit or reorder an old batch for that.
 - **Camo shirts are found by their hex.** A shirt swatch with `camo` (Sport-Tek Digi Camo) gets the digital camo
   from `src/lib/camo.ts` wherever the shirt shows: `shirtCamo(hex)` looks the color up, so saved options and share
   links still store a plain hex. A camo base hex must not match any solid shirt swatch; `camo.test.ts` checks it.

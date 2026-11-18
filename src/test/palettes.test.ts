@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { deltaE } from '../lib/color'
-import { cleanCustomColors, MAX_CUSTOM_COLORS, UNNAMED_CUSTOM } from '../lib/customColorList'
-import { CUSTOM_STARTERS, INK_COLLECTIONS, inkColorName, withCustomColors } from '../lib/palettes'
+import { addNewStarters, cleanCustomColors, cleanSeen, MAX_CUSTOM_COLORS, UNNAMED_CUSTOM } from '../lib/customColorList'
+import { CUSTOM_STARTER_BATCHES, CUSTOM_STARTERS, INK_COLLECTIONS, inkColorName, withCustomColors } from '../lib/palettes'
 
 describe('print color groups', () => {
   it('have no repeated colors or names inside a group', () => {
@@ -28,9 +28,14 @@ describe('Custom colors', () => {
     const custom = INK_COLLECTIONS.find((c) => c.id === 'custom')!
     expect(custom.custom && !custom.theme).toBe(true)
     expect(custom.colors).toBe(CUSTOM_STARTERS)
-    expect(CUSTOM_STARTERS.length).toBe(15)
+    expect(CUSTOM_STARTER_BATCHES.map((b) => b.length)).toEqual([15, 5])
+    // Near twins are left out of a batch (ΔE 10 or less), except Glove Tan, which Jared asked for beside Marker Tan
     for (const a of CUSTOM_STARTERS) {
-      for (const b of CUSTOM_STARTERS) if (a !== b) expect(deltaE(a.hex, b.hex), `${a.name} / ${b.name}`).toBeGreaterThan(10)
+      for (const b of CUSTOM_STARTERS) {
+        if (a === b) continue
+        const tans = [a.name, b.name].sort().join() === 'Glove Tan,Marker Tan'
+        expect(deltaE(a.hex, b.hex), `${a.name} / ${b.name}`).toBeGreaterThan(tans ? 5 : 10)
+      }
     }
   })
 
@@ -49,5 +54,16 @@ describe('Custom colors', () => {
     ])).toEqual([{ name: 'Sky', hex: '#7BB1C8' }, { name: UNNAMED_CUSTOM, hex: '#123456' }])
     const many = Array.from({ length: MAX_CUSTOM_COLORS + 5 }, (_, i) => ({ name: '', hex: `#${i.toString(16).padStart(6, '0')}` }))
     expect(cleanCustomColors(many)!.length).toBe(MAX_CUSTOM_COLORS)
+  })
+
+  it('give saved lists the starter batches added since, once', () => {
+    const batches = [[{ name: 'A', hex: '#AAAAAA' }, { name: 'B', hex: '#BBBBBB' }], [{ name: 'C', hex: '#CCCCCC' }, { name: 'Mine', hex: '#123456' }]]
+    // B was removed and #123456 was already added by hand: only C joins, on the end
+    const saved = [{ name: 'A', hex: '#AAAAAA' }, { name: 'Mine', hex: '#123456' }]
+    expect(addNewStarters(saved, 1, batches).map((c) => c.name)).toEqual(['A', 'Mine', 'C'])
+    expect(addNewStarters(saved, 2, batches)).toEqual(saved)
+    expect(cleanSeen(undefined)).toBe(1)
+    expect(cleanSeen(2)).toBe(2)
+    expect(cleanSeen('2')).toBe(1)
   })
 })
